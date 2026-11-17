@@ -144,13 +144,14 @@ def wellness(dataset: str, payload: object, day: date) -> dict[str, object]:
             optional_object(row.get("heartRate")),
             optional_object(row.get("movement")),
         )
+        steps = optional_object(movement.get("steps"))
         stress, battery = (
             optional_object(row.get("stress")),
             optional_object(row.get("bodyBattery")),
         )
         return {
             "resting_hr_bpm": numeric(heart, "restingValue"),
-            "steps": numeric(movement, "steps"),
+            "steps": numeric(steps, "value"),
             "stress_avg": numeric(stress, "avgLevel"),
             "body_battery_high": numeric(battery, "maxValue"),
             "body_battery_low": numeric(battery, "minValue"),

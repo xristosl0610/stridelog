@@ -61,6 +61,10 @@ Versioning. No release has been published.
 
 ### Fixed
 
+- Daily-summary steps now map the documented nested `movement.steps.value`
+  count rather than treating the entire object as numeric and rejecting the day.
+  Synthetic rebuild regressions cover real-shaped steps, missing/null counts,
+  zero and invalid nested values; raw archives need no re-download.
 - FIT notebook projection now includes ANT+ and Bluetooth LE device-type aliases
   while retaining raw ANT metadata, without inferring armband identity.
 - FIT notebook field-name projection handles unmapped numeric keys without

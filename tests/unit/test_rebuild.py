@@ -96,7 +96,13 @@ def _seed(*, bad_second: bool = False) -> Settings:
                             {
                                 "calendarDate": DAY.isoformat(),
                                 "heartRate": {"restingValue": 50},
-                                "movement": {"steps": 5000},
+                                "movement": {
+                                    "steps": {
+                                        "value": 4321,
+                                        "goal": 9000,
+                                        "distanceInMeters": 3210,
+                                    },
+                                },
                                 "stress": {"avgLevel": 20},
                                 "bodyBattery": {"minValue": 15, "maxValue": 90},
                             }
@@ -171,7 +177,7 @@ def test_repeated_rebuild_exact_results_preserves_raw_operations_and_annotations
             day = session.get(DailyWellness, DAY)
             sleep = session.get(SleepNight, DAY)
             hrv = session.get(HrvNight, DAY)
-            assert day is not None and day.resting_hr_bpm == 50 and day.steps == 5000
+            assert day is not None and day.resting_hr_bpm == 50 and day.steps == 4321
             assert sleep is not None and sleep.duration_s == 28000 and sleep.score is None
             assert hrv is not None and hrv.last_night_avg_ms is None
             assert session.scalar(select(func.count()).select_from(ZoneSnapshot)) == 1
@@ -280,8 +286,9 @@ def test_changed_json_updates_without_duplicate_rows_and_missing_input_is_report
         ("sleep", [dict[str, object](), dict[str, object]()], "ambiguous_daily_rows"),
         ("sleep", {"data": []}, "daily_array_expected"),
         ("hrv", [{"unverified": 42}], "hrv_populated_schema_unverified"),
-        ("daily", {"data": [{"movement": {"steps": True}}]}, "json_number_invalid"),
-        ("daily", {"data": [{"movement": {"steps": 10**400}}]}, "json_number_invalid"),
+        ("daily", {"data": [{"movement": {"steps": {"value": True}}}]}, "json_number_invalid"),
+        ("daily", {"data": [{"movement": {"steps": {"value": 10**400}}}]}, "json_number_invalid"),
+        ("daily", {"data": [{"movement": {"steps": 1234}}]}, "json_object_expected"),
     ],
 )
 def test_unverified_or_ambiguous_wellness_never_silently_becomes_zero(
@@ -291,6 +298,24 @@ def test_unverified_or_ambiguous_wellness_never_silently_becomes_zero(
 ) -> None:
     with pytest.raises(MappingError, match=code):
         wellness(dataset, payload, DAY)
+
+
+@pytest.mark.parametrize(
+    ("steps", "expected"),
+    [
+        (None, None),
+        (dict[str, object](), None),
+        ({"value": None}, None),
+        ({"value": 0}, 0),
+        ({"value": 4321, "goal": 9000, "distanceInMeters": 3210}, 4321),
+    ],
+)
+def test_daily_steps_uses_nested_actual_value_not_goal_or_distance(
+    steps: object,
+    expected: float | None,
+) -> None:
+    mapped = wellness("daily", {"data": [{"movement": {"steps": steps}}]}, DAY)
+    assert mapped["steps"] == expected
 
 
 def test_bad_document_recorded_and_zone_history_preserved() -> None:

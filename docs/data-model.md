@@ -78,7 +78,11 @@ rebuildable table, excluding operational history, annotations and report timing.
 Repeat comparisons therefore check actual normalized query results.
 
 Mappings use the observed daily `data` array, sleep array, null/empty HRV and
-per-sport zones array. A one-day response containing multiple rows or a conflicting
+per-sport zones array. Daily steps come from `movement.steps.value`, the actual
+count in the public `MovementValueV2DTO` schema, not its goal or distance.
+Missing/null counts remain null; an actual zero stays zero. Scalar step containers
+and invalid nested values fail explicitly.
+A one-day response containing multiple rows or a conflicting
 calendar date is rejected rather than arbitrarily selecting a row. Unknown populated
 HRV schemas are explicit failures; no guessed HRV field or sleep-score mapping is
 introduced. Ambiguous cadence/stride fields in Garmin JSON are not converted;
