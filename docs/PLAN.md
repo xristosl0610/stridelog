@@ -748,10 +748,18 @@ Node.js is unavailable and must not be automatically downloaded to bypass policy
 Pylance reports no workspace errors; this is not a substitute for CI Pyright.
 A clean local clone also passed locked installation and all 18 tests.
 The foundation is published at <https://github.com/xristosl0610/stridelog>.
-Initial GitHub CI passed strict Pyright on both operating systems and secrets
-scanning, but exposed an ANSI-sensitive help-text assertion. The verification PR
-will fix that assertion and exercise required checks before merging.
-Branch protection and the final passing Windows/Linux runs remain to be verified.
+The approved GitHub API route used existing personal credentials without
+installing GitHub CLI or changing global credential settings.
+Initial CI exposed an ANSI-sensitive help-text assertion; it was reproduced and
+corrected with explicit coverage of colored and uncolored output. Subsequent
+Windows and Linux jobs passed strict Pyright, lint, formatting and tests.
+The active main ruleset has no bypass actors and requires pull requests, linear
+history and both platform checks plus secrets scanning. Direct push and a merge
+attempt with failing checks were both rejected. Secret scanning/push protection,
+Dependabot alerts/fixes, private vulnerability reporting and weekly Python
+CodeQL are enabled; the first CodeQL scan found no alerts. All nine phase
+milestones, Phase 0 task issues, labels and templates exist.
+PR #2 completes the end-to-end verification after its final checks pass.
 
 Tasks:
 
@@ -772,8 +780,8 @@ Tasks:
 - [x] 0.7 Write the documentation skeleton: README, LICENSE (MIT), CHANGELOG, CONTRIBUTING, SECURITY, `docs/PLAN.md` (this file), `docs/architecture.md`, and ADR-0001 to ADR-0008 (Section 9.5).
 - [x] 0.8 Add project conventions to `.github/copilot-instructions.md`: package layout, SI units, never log secrets, never commit data.
 - [x] 0.9 Create the public GitHub repository and push the first commit, which includes the CI workflow.
-- [ ] 0.10 Configure the repository settings and security features (Section 11.5). After CI has run once, add the `main` ruleset with the CI jobs as required checks; GitHub only offers checks that have already run.
-- [ ] 0.11 Add Dependabot, CodeQL, issue and pull request templates, labels, and one milestone for each of Phases 0 to 8.
+- [x] 0.10 Configure the repository settings and security features (Section 11.5). After CI has run once, add the `main` ruleset with the CI jobs as required checks; GitHub only offers checks that have already run.
+- [x] 0.11 Add Dependabot, CodeQL, issue and pull request templates, labels, and one milestone for each of Phases 0 to 8.
 - [ ] 0.12 Test the workflow end to end: open a small pull request (for example, adding the templates) and merge it only after its checks pass.
 
 **Deliverable**: a public repository with passing CI, a protected `main` branch and the documentation skeleton.
