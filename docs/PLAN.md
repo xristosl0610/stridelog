@@ -413,13 +413,19 @@ The data folder is deliberately outside the repository, so personal data cannot 
 
 ### 5.7 Configuration and secrets
 
-- Application settings come from `STRIDELOG_*` environment variables or a `.env` file (ignored by Git) and are checked at startup. `.env.example` lists the setting names without values.
-- The Personal API key follows Garmin's client conventions: `GARMIN_PERSONAL_API_KEY` from the process environment or an explicitly loaded `.env`, or the key file `%USERPROFILE%\.config\garmin\connect-personal-api-key`. The owner selected the ignored local `.env`; restrict its permissions and never force-add it. The bearer cache remains outside the repository, using the protected discovery folder during Phase 1. Neither credential is ever logged.
-- `STRIDELOG_API_KEY_EXPIRES_ON=YYYY-MM-DD` records the actual expiration shown by Garmin, not the creation date. Planned Phase 2 `stridelog doctor` warnings start 14 days before expiry. No external calendar or reminder service is required; the date setting alone does not send notifications, and `doctor` must be run to display a warning.
-- Optional `STRIDELOG_HR_ARMBAND_FROM=YYYY-MM-DD` records an inclusive activity-local date for the approved user-assumed HR-source fallback (Section 3.4). It is private user metadata, not FIT evidence; Phase 2 will validate the setting and Phase 3 will apply it. No date-based classification is implemented during discovery.
+- Application settings come from `STRIDELOG_*` process variables before an automatically loaded working-directory `.env` (ignored by Git). `.env.example` lists defaults without private values. Help/version do not load settings.
+- The Personal API key follows Garmin's client conventions: `GARMIN_PERSONAL_API_KEY` from the process environment or `.env`, or the key file `%USERPROFILE%\.config\garmin\connect-personal-api-key`. The owner selected the ignored local `.env`; restrict its permissions and never force-add it. The bearer cache remains outside the repository, using the protected discovery folder during Phase 1 and the application data directory during ingestion. Neither credential is ever logged.
+- `STRIDELOG_API_KEY_EXPIRES_ON=YYYY-MM-DD` records the actual expiration shown by Garmin, not the creation date. `stridelog doctor` warnings start 14 days before expiry. No external calendar or reminder service is required; the date setting alone does not send notifications, and `doctor` must be run to display a warning.
+- Optional `STRIDELOG_HR_ARMBAND_FROM=YYYY-MM-DD` records an inclusive activity-local date for the approved user-assumed HR-source fallback (Section 3.4). It is private user metadata, not FIT evidence; settings validate it now and Phase 3 will apply it. No date-based classification is implemented during ingestion.
 - Optional later improvement: store the key in Windows Credential Manager (backlog).
 
-### 5.8 Command-line interface (planned)
+### 5.8 Command-line interface
+
+`--version`, local `doctor [--initialize]` and aggregate operational `status`
+are implemented. `doctor` checks presence rather than authenticating credentials;
+missing configuration/storage fails readiness. `--initialize` is the explicit
+offline migration/bootstrap operation. The remaining commands below are planned;
+activity/data-quality counts require later parsed tables.
 
 | Command | Purpose |
 | --- | --- |
@@ -703,7 +709,7 @@ Approving this plan approves exactly these dependencies. Anything else needs a s
   - ADR-0001 Record architecture decisions
   - ADR-0002 Garmin Connect Personal API as the only data source (after Phase 1)
   - ADR-0003 Raw-first archive and rebuildable SQLite database
-  - ADR-0004 FIT decoding with `garmin-fit-sdk` (after Phase 1)
+  - ADR-0004 FIT decoding with `garmin-fit-sdk` (Phase 3 parser validation, per approved deferral)
   - ADR-0005 Polars for analytics
   - ADR-0006 FastAPI backend, React + TypeScript frontend, backend built first
   - ADR-0007 SI units and UTC storage conventions
@@ -910,22 +916,38 @@ Tasks:
 
 - [x] 1.1 Read the Personal API terms and create a key with a chosen lifetime. Save it outside the repository, or in the ignored local `.env` selected by the owner, and record its actual expiration as `STRIDELOG_API_KEY_EXPIRES_ON=YYYY-MM-DD`. Terms, the first authenticated check and private expiry configuration are owner-confirmed. No external calendar is required. Never paste the key or private dates into chats, issues or code.
 - [x] 1.2 Explore the official command-line interface in an isolated tool environment: `python -m uv tool run --from garmin-connect-personal-api-python==1.0.0 gc-personal --help`. Activities and download help also pass; authenticated exploration remains in 1.3. No project code or dependencies added.
-- [ ] 1.3 Work through the checklist in Section 13 (activities, wellness, FIT contents, API behavior).
-- [x] 1.4 Inspect 4 representative FIT files in a notebook with outputs stripped: one from the wrist-only period, one from the chest-strap period, one known to use the armband (even if unlisted in Garmin's UI), and one race. Owner-run projected reports are recorded in findings; only the output-free notebook is published. Ambiguous source metadata remains explicit, and the remaining Section 13 checks and issue #20 acceptance are still open.
-- [ ] 1.5 Record the findings (data structures, field names and limits, but no personal values) in `docs/research/personal-api-findings.md`. Then update this plan and accept ADR-0002 and ADR-0004.
+- [x] 1.3 Timeboxed checklist review completed; unchecked observations in Section 13 remain unverified and are explicitly transferred below, not marked as passed.
+- [x] 1.4 Inspect 4 representative FIT files in a notebook with outputs stripped: one from the wrist-only period, one from the chest-strap period, one known to use the armband (even if unlisted in Garmin's UI), and one race. Owner-run structural findings and an output-free notebook are published. Ambiguous source metadata remains explicit; remaining interpretation checks transfer to Phase 3 under the approved closeout.
+- [x] 1.5 Record findings without personal values; accept ADR-0002 for raw ingestion. Per owner approval, ADR-0004 remains Proposed until Phase 3 parser validation.
 
 **Deliverable**: a findings document and an updated plan.
 
-**Acceptance criteria**: every item in Section 13 is answered, and the schema and scope are adjusted wherever the facts differ from expectations.
+**Approved closeout**: the owner approved ending the discovery timebox using
+the recorded structural evidence. This supersedes the original requirement to
+resolve every Section 13 observation and accept both ADRs before ingestion.
+Unverified page/range maxima, complete history, edit-marker semantics and live
+HTTP/token behavior transfer to Phase 2 acceptance. Real-file units, sensor
+identity/provenance, altitude accuracy and timing/offset/DST checks transfer to
+Phase 3. No further discovery-helper iteration or live rerun is a prerequisite.
 
 ### Phase 2: Ingestion (size M)
 
 **Goal**: `stridelog sync` copies your runs and wellness data into the raw archive incrementally, without data loss and without overloading Garmin.
 
+**Approved implementation plan**: two cohesive PRs: (1) settings, operational
+database/migrations, local doctor/status and this discovery closeout; (2) paced,
+retrying source adapter, atomic/checksummed archive, incremental/resumable
+activity and wellness sync, locking, dry-run and fake-source acceptance tests.
+Use pages of 20, at least one second between HTTP attempts and one-day wellness
+chunks. Refresh details only within the recent activity lookback unless an
+older `--since` explicitly requests reconciliation. Preserve original ZIPs.
+No FIT SDK, analytics or web dependencies are approved in this phase.
+Full-account acceptance remains owner-run; synthetic tests must not contact Garmin.
+
 Tasks:
 
-- [ ] 2.1 Settings with pydantic-settings (`STRIDELOG_*` environment variables or `.env`): the data folder (default `~/.stridelog`), how many recent days to re-fetch, request pacing, the actual key expiry date, and optional armband fallback date. Validate date settings as `YYYY-MM-DD`; keep them private and distinguish them from observed FIT metadata.
-- [ ] 2.2 Database foundation: SQLAlchemy engine and sessions, SQLite settings (WAL, foreign keys), Alembic, and the operations tables.
+- [x] 2.1 Settings with pydantic-settings (`STRIDELOG_*` environment variables or automatic `.env`): default `~/.stridelog` outside the checkout, recent-day lookbacks, finite pacing of at least one second, exact private dates and secret-safe validation.
+- [x] 2.2 Database foundation: SQLAlchemy engine and sessions, SQLite WAL/foreign keys/busy timeout, packaged Alembic and operations tables; idempotent explicit initialization and persistence verified synthetically.
 - [ ] 2.3 `GarminSource` interface and the `PersonalApiSource` adapter on top of Garmin's client:
   - a shared `requests` session with urllib3 `Retry`, which retries 429 and 5xx errors, waits longer after each attempt and follows `Retry-After`;
   - request pacing;
@@ -1294,10 +1316,14 @@ the repository and chat. Public findings can record whether the private
 validation passed, without its underlying values. Distinguish documented limits
 from observed limits, and mark unverified checks explicitly.
 
+The owner approved closing the discovery timebox. Unchecked items below remain
+unverified follow-up observations for Phase 2 raw-ingestion acceptance or
+Phase 3 parsing; they no longer block the approved Phase 2 implementation.
+
 **Activities**
 
 - [ ] Maximum page size of activity search, total number of runs, and the oldest activity returned (expected: January 2025). Requests using `limit=20` succeeded with disjoint page IDs, and the limited historical sample is nonempty; maxima, exact page lengths and complete history remain unverified.
-- [ ] Activity type keys in your history (running, trail, treadmill, track) and whether `activityTypes/simple` responds. The endpoint returned a nonempty array; taxonomy field names/values were omitted by the projection.
+- [ ] Activity type keys in your history (running, trail, treadmill, track) and whether `activityTypes/simple` responds. Nonempty response and first-item string `key` are confirmed; values/hierarchy and historical coverage remain unverified.
 - [ ] Event type in search and details: does a known race show `race`? Confirmed in known-race details; search-side value remains unverified.
 - [ ] Field for detecting changes, such as a last-update timestamp, in search or details. Details `metadataDTO.lastUpdateDate` is an ISO datetime string; edit behavior remains untested.
 - [ ] Summary fields available: distance, durations, heart rate, elevation (and whether it is corrected), VO2 max, training effect.
@@ -1310,7 +1336,7 @@ from observed limits, and mark unverified checks explicitly.
 - [ ] Which fields exist for resting heart rate, sleep duration and stages (and sleep score, if any), Body Battery, stress and steps.
 - [ ] Whether the Forerunner 55 produces any HRV data at all.
 - [x] Whether the daily VO2 max endpoint returns data or 404. Owner batch returned a nonempty array of objects, not 404; omitted fields leave VO2 metric mapping and units unverified.
-- [ ] Heart-rate zones: which zones, whether they are per sport, and the maximum and resting heart rate. Nonempty array and string `sport` field confirmed; zone/profile fields and per-sport semantics remain unverified.
+- [ ] Heart-rate zones: which zones, whether they are per sport, and the maximum and resting heart rate. First-item numeric HR-used fields and five floors, string sport/training method, boolean resting-HR auto-update and nullable lactate-threshold HR are confirmed; per-sport semantics, units and history remain unverified.
 
 **FIT contents (4 sample runs)**
 
