@@ -233,6 +233,15 @@ The installed enum annotations also use camel-case labels such as
 strings instead of trusting those literal annotations. A future adapter must
 validate/normalize runtime enums rather than treating a passing static check
 as proof of SDK annotation accuracy. No third-party stubs or source were edited.
+
+An owner-run failure also exposed mixed field-key types: a valid synthetic FIT
+record with an unmapped field reproduced integer and string keys, despite
+string-only keys implied by the SDK's annotations. Sorting the mixed keys
+raised `TypeError`. The helper now accepts iterables of arbitrary keys and
+explicitly projects only string field names, still excluding `developer_fields`.
+Numeric field IDs are intentionally omitted from the report; originals are
+unchanged. A decoder-backed regression covers this case without suppressing
+type diagnostics or trusting the inaccurate key annotation.
 The owner-run four-sample structural reports are recorded below; real-file
 timing and unit semantics still require verification. No parser performance
 comparison was performed.
@@ -307,9 +316,10 @@ boundary without writing outside the workspace.
 & .tools\fit-discovery\Scripts\python.exe notebooks\check_fit_discovery.py
 ```
 
-Four focused checks pass: protocol alias projection with raw ANT retained and
+Five focused checks pass: protocol alias projection with raw ANT retained and
 no source classification; raw/ZIP parity with private-value sentinels; explicit
-CRC failure; and in-repository input rejection. CI runs the same checks on
+CRC failure; in-repository input rejection; and valid FIT records containing
+unmapped numeric field keys. CI runs the same checks on
 Windows and Linux in an isolated SDK environment, without adding the SDK to the
 application lockfile.
 

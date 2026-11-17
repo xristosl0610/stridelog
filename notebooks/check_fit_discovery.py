@@ -5,11 +5,13 @@ import unittest
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from struct import pack
 from tempfile import TemporaryDirectory
 from typing import cast
 from zipfile import ZipFile
 
-from garmin_fit_sdk import Encoder, Profile
+from garmin_fit_sdk import Decoder, Encoder, Profile, Stream
+from garmin_fit_sdk.crc_calculator import CrcCalculator
 
 ROOT = Path(__file__).resolve().parents[1]
 Inspector = Callable[[Path, Path], dict[str, object]]
@@ -96,6 +98,29 @@ class FitDiscoveryChecks(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertNotIn(value, rendered)
         self.assertNotIn(str(self.sample.parent), rendered)
+
+    def test_unknown_numeric_field_does_not_break_named_field_projection(self) -> None:
+        # A synthetic record definition with timestamp, HR and an unmapped field 250.
+        definition = (
+            bytes((0x40, 0, 0))
+            + pack("<H", Profile["mesg_num"]["RECORD"])
+            + bytes((3, 253, 4, 0x86, 3, 1, 2, 250, 1, 2))
+        )
+        body = definition + pack("<BIBB", 0, 1000000000, 191, 42)
+        data = pack("<BBHI4s", 12, 0x20, 0, len(body), b".FIT") + body
+        payload = data + pack("<H", CrcCalculator.calculate_crc(data, 0, len(data)))
+        messages, errors = Decoder(Stream.from_byte_array(bytearray(payload))).read()
+        self.assertFalse(errors)
+        records = messages.get("record_mesgs", [])
+        self.assertEqual(len(records), 1)
+        self.assertIn(250, records[0])
+        self.sample.write_bytes(payload)
+
+        report = self.inspect(self.sample, self.repository)
+
+        self.assertEqual(report["record_fields"], ["heart_rate", "timestamp"])
+        self.assertIs(report["hr_values_present"], True)
+        self.assertNotIn("250", json.dumps(report))
 
     def test_corrupt_input_does_not_produce_a_report(self) -> None:
         data = bytearray(self.sample.read_bytes())
