@@ -4,7 +4,7 @@ Local-first running analytics for your Garmin data. stridelog mirrors your runs 
 
 | Item | Value |
 | --- | --- |
-| Status | Phase 0 foundation published and verified; workspace rename outstanding. Phase 1 awaits approval. |
+| Status | Phase 0 complete, including workspace rename. Phase 1 approved; public-source discovery recorded, private verification pending. |
 | Owner | Christos Lathourakis |
 | Last updated | 2026-11-17 |
 | Repository | `stridelog` on your personal GitHub account (public, MIT), created in Phase 0 |
@@ -108,14 +108,14 @@ Sizes: S is 1 to 3 focused sessions, M is 4 to 8 and L is 8 to 15, where a sessi
 
 | Option | How it works | Strengths | Weaknesses | Verdict |
 | --- | --- | --- | --- | --- |
-| **Connect Personal API** (official, launched October 2026) | A personal API key is exchanged for a 24-hour bearer token on `personal.connectapi.garmin.com` | Supported by Garmin; no password or MFA (multi-factor sign-in) handling; no login rate limit; original FIT files; wellness data | New (v1.0); covers only part of Garmin's data; the key expires after 30 to 365 days and must be renewed by hand; rate limits undocumented | **Chosen** |
+| **Connect Personal API** (official, launched October 2026) | A personal API key is exchanged for a bearer token on `personal.connectapi.garmin.com`; about 24 hours is the earlier research expectation, not a verified account expiry | Supported by Garmin; no password or MFA (multi-factor sign-in) handling; no login rate limit; original FIT files; wellness data | New (v1.0); covers only part of Garmin's data; the key expires after 30 to 365 days and must be renewed by hand; rate limits undocumented | **Chosen** |
 | Unofficial Connect API (`python-garminconnect` 0.3.x, used by GarminDB) | Imitates the sign-in of Garmin's web and mobile apps | All data Garmin shows, including training status, race predictor, gear and personal records | Reverse-engineered and fragile: it broke in March 2026 when Garmin added bot protection, after which the `garth` sign-in library was deprecated. About 4 sign-ins in 40 minutes trigger an HTTP 429 error that also locks you out of the official Garmin app for a while. It is unclear whether it complies with Garmin's terms of use | Rejected |
 | Garmin account data export | Garmin account > Data management > Export your data | Complete one-off archive | Manual, slow, not incremental | Contingency only |
 | FIT files copied from the watch | Copy the activity folder over USB | Works offline, no cloud dependency | Manual; no Garmin summaries or wellness data | Fallback importer (Should) |
 
 ### 3.2 What the Personal API provides
 
-- **Access**: create a key in Garmin Connect on the web, under Settings > Personal API Key. Accept the terms and choose a lifetime of 30, 90, 180 or 365 days. The key is shown only once. It is exchanged for a bearer token, a JWT valid for about 24 hours. There is no refresh token, so you exchange the key again when the token expires.
+- **Access**: create a key in Garmin Connect on the web, under Settings > Personal API Key. Accept the terms and choose a lifetime of 30, 90, 180 or 365 days. The key is shown only once. It is exchanged for a bearer JWT. Earlier research expects about 24 hours, but the account-issued expiry remains unverified; use the issued `exp` claim rather than a hard-coded lifetime. There is no refresh token, so you exchange the key again when the token expires.
 - **Scope**: read-only, and data is only fetched on request (pull-only). Only documented paths respond; everything else returns 404.
 - **Official client**: `garmin-connect-personal-api-python` 1.0.0 (Apache-2.0 license, Python 3.12 or newer). It caches tokens and includes a `gc-personal` command-line tool, which Phase 1 uses before any project code exists.
 
@@ -124,13 +124,18 @@ Sizes: S is 1 to 3 focused sessions, M is 4 to 8 and L is 8 to 15, where a sessi
 | Activity search | `/activitylist-service/activities/search/activities` | Paged (`start`, `limit`), with date and activity-type filters |
 | Activity details | `/activity-service/activity/{id}` | Different JSON structure from search (`summaryDTO`, `eventTypeDTO`) |
 | Original activity file | `/download-service/files/activity/{id}` | ZIP file containing the FIT file |
-| Activity types | `/activity-service/activity/activityTypes/simple` | Needed to select running activities; not in the published spec, so needs checking |
+| Activity types | `/activity-service/activity/activityTypes/simple` | Listed in the current Swagger page; absent from client 1.0.0 convenience methods/CLI; account access still needs checking |
 | Daily summaries | `/usersummary-service/v2/dailysummaries` | Steps, resting HR, stress, Body Battery, intensity minutes |
 | Sleep | `/sleep-service/sleep/dailySleepSummariesByDate` | Date-range query |
 | HRV | `/hrv-service/hrv/daily/{start}/{end}` | Probably empty for a Forerunner 55 (Section 3.4) |
 | Body Battery, stress, steps | Dedicated daily endpoints | Used only if the daily summaries lack a field we need |
 | Heart-rate zones | `/biometric-service/heartRateZones/v2` | Your zone settings |
-| VO2 max (daily) | `/metrics-service/metrics/maxmet/daily/{start}/{end}` | Garmin's client supports it, but it is missing from the published spec and one community test got 404; needs checking |
+| VO2 max (daily) | `/metrics-service/metrics/maxmet/daily/{start}/{end}` | Listed in current Swagger and upstream client source, but absent from released client 1.0.0 convenience methods/CLI; account access still needs checking |
+
+Phase 1 distinguishes the published client from its newer upstream source.
+Verified commands, documented limits and unresolved account checks are recorded
+in [the discovery findings](research/personal-api-findings.md). A documented path
+or client wrapper is not evidence that an endpoint works for this account.
 
 **Not available** (based on community tests on 2026-10-24): training status, training readiness, endurance and hill scores, Garmin's race predictor, the activity splits (laps) endpoint, goals, body composition and the social profile. Gear and personal records are not in the published endpoint list either.
 
@@ -143,7 +148,7 @@ What this means for stridelog:
 **Practical constraints**:
 
 - Garmin publishes no rate limit and sends no rate-limit headers. We send about 1 request per second, wait longer and longer after 429 and 5xx errors, and follow the `Retry-After` header.
-- Each endpoint caps how many days one request may cover. Observed caps range from 28 to 365 days and reports conflict, so requests are split into small date ranges.
+- Current Swagger documents up to 1 year for daily summaries, 31 days for sleep summaries and Body Battery, and 28 days for steps and stress. These are documented limits, not account-tested boundaries; inclusive counting, HRV limits and observed behavior still need verification.
 - The key has to be renewed by hand at least once a year.
 
 ### 3.3 GarminDB review
@@ -761,16 +766,21 @@ CodeQL are enabled; the first CodeQL scan found no alerts. All nine phase
 milestones, Phase 0 task issues, labels and templates exist.
 [PR #2](https://github.com/xristosl0610/stridelog/pull/2) was squash-merged only after
 the final Windows/Linux and secrets checks passed and review threads were
-addressed. Final suite: 21 tests with 100% package coverage. The folder rename in
-[issue #5](https://github.com/xristosl0610/stridelog/issues/5) is the only remaining
-Phase 0 task: close VS Code, rename `better_strava` to `stridelog`, reopen it and
-run `uv sync --locked` to refresh the environment after moving the workspace.
+addressed. Final suite: 21 tests with 100% package coverage.
+The workspace rename in
+[issue #5](https://github.com/xristosl0610/stridelog/issues/5) was verified after
+reopening `stridelog`. A locked sync refreshed the editable package, but moved
+executable launchers still referenced the old directory. Running
+`python -m uv sync --locked --reinstall` refreshed the existing locked
+dependencies and launchers. Afterwards, `python -m uv run pytest` passed all
+21 tests with 100% package coverage; Ruff lint and formatting passed.
+Issue #5 and the Phase 0 milestone are closed.
 No Garmin credentials or personal activity data have been accessed.
 
 Tasks:
 
 - [x] 0.1 Prepare your machine: update uv to 0.13 or newer; confirm Python 3.14; install the GitHub CLI or use the web-only steps (Section 11). Install these VS Code extensions: Python with Pylance, Ruff, Jupyter, and GitHub Pull Requests.
-- [ ] 0.2 Rename the folder `better_strava` to `stridelog`, run `git init -b main`, and set a Git identity for this repository only, using your GitHub no-reply email.
+- [x] 0.2 Rename the folder `better_strava` to `stridelog`, run `git init -b main`, and set a Git identity for this repository only, using your GitHub no-reply email.
 - [x] 0.3 Add repository housekeeping files: `.gitignore`, `.gitattributes` (LF line endings), `.editorconfig`, and `.env.example` (setting names only, no values).
 - [x] 0.4 Create the Python project with uv:
   - a `src/stridelog` package that requires Python 3.14 or newer;
@@ -803,10 +813,35 @@ Tasks:
 
 **Goal**: check the facts about your account and files before designing the database tables.
 
+Implementation plan approved (2026-11-17):
+
+1. Finish verified Phase 0 tracking and create Phase 1 task issues.
+2. Verify official API documentation, the published client, terms and FIT SDK licensing.
+3. Record public findings and prepare private discovery steps; add an output-free inspection notebook only when needed.
+4. Perform account/FIT checks only after agreeing local access and terms. Publish structural findings, never private responses or values.
+5. Review changes through a pull request; accept ADR-0002/0004 only with sufficient evidence. Obtain separate approval before Phase 2.
+
+Tracking:
+[1.1 / #17](https://github.com/xristosl0610/stridelog/issues/17),
+[1.2 / #18](https://github.com/xristosl0610/stridelog/issues/18),
+[1.3 / #19](https://github.com/xristosl0610/stridelog/issues/19),
+[1.4 / #20](https://github.com/xristosl0610/stridelog/issues/20),
+[1.5 / #21](https://github.com/xristosl0610/stridelog/issues/21).
+Initial [findings](research/personal-api-findings.md) verify client 1.0.0 help
+in an isolated uv tool environment and correct differences between published
+and upstream interfaces. The owner confirmed reviewing the Personal API and
+FIT SDK terms and approved planned local use. The owner reports successful
+private-folder permission setup and one authenticated activity-search command
+using an ignored local `.env`. The assistant has not read credentials or raw
+responses, and no SDK execution or real FIT inspection has occurred.
+Private verification uses owner-run commands, with only structural conclusions
+shared. The expiry reminder, response structures, representative samples and
+the remaining Section 13 checks are still pending; both ADRs remain proposed.
+
 Tasks:
 
-- [ ] 1.1 Read the Personal API terms and create a key with a 365-day lifetime. Save it outside the repository, as a key file in your user profile or an environment variable, and add the expiry date to your calendar. Never paste the key into chats, issues or code.
-- [ ] 1.2 Explore the API with Garmin's official command-line tool in a temporary environment, for example `uvx --from garmin-connect-personal-api-python gc-personal --help`. No project code is needed yet.
+- [ ] 1.1 Read the Personal API terms and create a key with a 365-day lifetime. Save it outside the repository, or in the ignored local `.env` selected by the owner, and add the expiry date to your calendar. Terms and the first authenticated check are owner-confirmed; the private expiry reminder remains unconfirmed. Never paste the key into chats, issues or code.
+- [x] 1.2 Explore the official command-line interface in an isolated tool environment: `python -m uv tool run --from garmin-connect-personal-api-python==1.0.0 gc-personal --help`. Activities and download help also pass; authenticated exploration remains in 1.3. No project code or dependencies added.
 - [ ] 1.3 Work through the checklist in Section 13 (activities, wellness, FIT contents, API behavior).
 - [ ] 1.4 Inspect 4 representative FIT files in a notebook with outputs stripped: one from the wrist-only period, one from the chest-strap period, one from the COROS period, and one race.
 - [ ] 1.5 Record the findings (data structures, field names and limits, but no personal values) in `docs/research/personal-api-findings.md`. Then update this plan and accept ADR-0002 and ADR-0004.
@@ -1184,7 +1219,12 @@ gh release create v0.1.0 --title "v0.1.0 - Data ingestion and storage" --generat
 
 ## 13. Phase 1 verification checklist
 
-Record answers in `docs/research/personal-api-findings.md`: structures and limits only, no personal values.
+Record answers in [the findings](research/personal-api-findings.md): structures
+and limits only, no personal values. Keep account totals, oldest/earliest dates,
+actual measurements, activity IDs, sensor identifiers and private paths outside
+the repository and chat. Public findings can record whether the private
+validation passed, without its underlying values. Distinguish documented limits
+from observed limits, and mark unverified checks explicitly.
 
 **Activities**
 
@@ -1214,9 +1254,9 @@ Record answers in `docs/research/personal-api-findings.md`: structures and limit
 
 **API behavior and terms**
 
-- [ ] How the API responds to a steady 1 request per second over a few hundred requests, including any 429 errors and `Retry-After` headers.
-- [ ] Error formats for 401, 404 and 429.
-- [ ] Token lifetime, read from the JWT `exp` claim (its expiry field).
+- [ ] Observe normal discovery traffic paced at no more than 1 request per second; record any naturally encountered 429 and `Retry-After` behavior. Do not generate hundreds of requests solely as a load test; stop or defer on rate limiting.
+- [ ] Error formats for 401, 404 and 429, using documentation or naturally encountered errors. Do not invalidate a working key or provoke 429; mark unobserved behavior explicitly.
+- [ ] Token lifetime, checked locally from JWT timing claims when present (or time of issue and `exp`). Never publish the token, its decoded payload or exact account-specific expiry.
 - [ ] Anything in the Personal API terms about storing data locally or publishing code.
 
 ---
