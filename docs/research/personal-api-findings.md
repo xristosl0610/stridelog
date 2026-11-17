@@ -223,6 +223,58 @@ rather than mistake an exhausted stream for a valid empty activity.
 Strict Pyright evaluation of SDK integration and the four representative real
 files remain pending. No parser performance comparison was performed.
 
+## Approved private date policies
+
+The owner reports that the armband is not shown in Garmin's activity sensor
+listing despite known use. This is an owner-reported UI observation, not an
+independently verified forum finding or proof about the original FIT contents.
+The owner has downloaded original sample ZIPs; inspect a run known to use the
+armband even if it is not labelled as such in Garmin.
+
+Approved on 2026-11-17:
+
+- Optional `STRIDELOG_HR_ARMBAND_FROM=YYYY-MM-DD` applies inclusively to the
+  activity's local date, only when HR exists and FIT cannot establish its source.
+  Record `armband` with `user_date_rule` provenance, not sensor confirmation.
+  Clear contrary source evidence takes precedence. Missing external-sensor
+  metadata is not proof of wrist HR; otherwise retain `unknown`. A run without
+  HR remains `none`. Do not infer measurement accuracy from the label.
+- `STRIDELOG_API_KEY_EXPIRES_ON=YYYY-MM-DD` stores the actual key expiration
+  shown by Garmin, not its creation date. No external calendar or reminder
+  service is required. Phase 2 `doctor` warnings start 14 days before expiry
+  when the command is run; no warning/notification is implemented yet.
+- Keep both real dates in the private ignored `.env`; do not share or log them.
+  Date parsing arrives in Phase 2 and HR classification in Phase 3. Discovery
+  records the policy without pretending that runtime behavior already exists.
+
+The owner confirms both settings were configured privately and all four
+original ZIPs are ready, including a known-armband sample. No real dates were
+supplied, and the assistant has not read `.env`. The original FIT samples still
+require local inspection; no ADR is accepted based on the user-assumed rule.
+
+## Local FIT inspection notebook
+
+[01_fit_discovery.ipynb](../../notebooks/01_fit_discovery.ipynb) is an output-free,
+owner-run inspection tool, not the production parser. It prompts for each sample
+path at runtime, requires real samples outside the repository, reads raw FIT or
+a ZIP containing exactly one FIT member without extraction, and reports:
+
+- Message/field names and whether HR values exist, not physiological values.
+- Qualitative timestamp-interval labels, not timestamps, durations or dates.
+- Sensor protocol/model metadata only; no serial numbers or private paths.
+- An explicit `not_performed` source-classification status. Neither the armband
+  date rule nor missing-sensor inference is applied to observed evidence.
+
+The notebook uses a workspace-local ignored discovery kernel with SDK 21.221.0
+and ipykernel 7.4.0 (the existing approved notebook dependency's locked version).
+It does not load `.env`, contact Garmin, modify originals or change project
+dependencies. Clear outputs before saving/committing.
+
+Synthetic-only validation passed raw/ZIP report parity, all four prompted
+labels, variable/sparse timestamp handling, no-HR inputs, privacy sentinels, and
+explicit failures for corruption, missing/unsupported/in-repository inputs and
+zero/multiple FIT ZIP members. Real-sample results are not yet available.
+
 ## Private verification remaining
 
 The owner confirms terms review, private-folder permission setup and a
@@ -245,13 +297,14 @@ conclusions only.
 | FIT timing and units | Cadence scaling, elevation source/precision, lap and pause events, and offset handling |
 | HTTP behavior | Status/structure observations and any naturally encountered rate-limit headers under paced discovery |
 | Token timing | Locally checked lifetime only; never publish tokens, payloads or exact expiry |
-| Terms | Owner confirms review and approval of planned local use and private-folder permission setup; no copied terms. Private expiry reminder still needs confirmation |
+| Terms | Owner confirms terms, private-folder permissions and private expiry-date configuration; no copied terms or dates; no external reminder required |
 | SDK feasibility | Terms approved and synthetic round-trip passed; stub limitations recorded; strict integration typing and real-file evaluation remain pending |
 
 ### Next local session
 
-1. Confirm the expiry reminder is managed privately. The owner has already
-   confirmed reviewing the Personal API and FIT SDK terms for planned local use.
+1. Keep the actual key expiration in the already-configured private
+   `STRIDELOG_API_KEY_EXPIRES_ON` setting; no calendar integration is required.
+   The owner has confirmed reviewing the Personal API and FIT SDK terms.
 2. Keep using the protected folder outside the repository for the cache and
    responses. The owner selected an ignored local `.env` for credentials.
    Review that file's permissions locally too. Do not search the machine for
@@ -261,9 +314,9 @@ conclusions only.
    not through tools that would return raw data into the conversation.
 4. Record field names, shapes, observed limits and unresolved items here.
    Keep account totals/dates, identifiers, actual measurements and locations private.
-5. Prepare an output-free sample-inspection notebook when the SDK/local workflow
-   is agreed. Accept the ADRs only after the remaining evidence supports them,
-   then obtain a separate Phase 2 implementation-plan approval.
+5. Run the prepared output-free FIT notebook locally on the four samples.
+   Accept the ADRs only after the remaining evidence supports them, then obtain
+   a separate Phase 2 implementation-plan approval.
 
 ### Windows private-folder setup (owner-run)
 
@@ -291,9 +344,10 @@ before saving credentials or responses. A unique fresh directory avoids
 retaining explicit grants from an existing folder. These ACLs do not isolate
 data from administrators, corporate monitoring or backups.
 
-Check the key expiry privately in Garmin Connect and add a calendar reminder
-to renew it at least 14 days before expiry. Do not share the date, ACL listing
-or folder path; report only whether setup and the reminder are complete.
+Check the actual key expiration privately in Garmin Connect and record it as
+`STRIDELOG_API_KEY_EXPIRES_ON=YYYY-MM-DD` in `.env`. No external reminder is
+required. Do not share the date, ACL listing or folder path. Until Phase 2
+implements `doctor`, this setting does not produce a warning.
 
 ### Credential loading and the first private request (owner-run)
 

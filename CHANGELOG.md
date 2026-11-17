@@ -17,3 +17,7 @@ Versioning. No release has been published.
   mapping, time zones and incremental edit detection.
 - One-day wellness response structures and synthetic FIT SDK feasibility
   findings, including integrity-scan stream handling.
+- Approved private expiry-date configuration and provenance-labelled armband
+  fallback policy for future settings/classification, without external reminders.
+- Output-free local FIT discovery notebook with synthetic validation and
+  structural/model-only reporting for owner-run sample inspection.

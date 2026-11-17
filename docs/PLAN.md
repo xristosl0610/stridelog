@@ -173,6 +173,9 @@ Licensing: GarminDB is GPL-2.0, so copying its code would force stridelog to bec
 | April 2025 to early November 2026 | Forerunner 55 | Chest strap |
 | Since November 2026 | Forerunner 55 | COROS armband (optical, worn on the arm) |
 
+This is owner-reported usage context, not per-file sensor evidence or an
+automatic classification rule.
+
 **What we expect from the Forerunner 55 (to be confirmed in Phase 1):**
 
 - **No barometric altimeter**: elevation comes from GPS and is noisy, although Garmin Connect may correct the summary totals. We smooth elevation before calculating grade and grade-adjusted pace, and label elevation-based metrics as approximate. Correcting elevation against a terrain model is an optional backlog item.
@@ -181,9 +184,26 @@ Licensing: GarminDB is GPL-2.0, so copying its code would force stridelog to bec
 - **Running VO2 max estimate**: the watch records it; Phase 1 checks whether the API returns it.
 - **Recording interval** (smart recording or every second): checked in Phase 1. The analytics convert everything to one sample per second either way.
 
-**Every FIT file records which sensors were used.** Each file contains `device_info` messages for the watch and every connected sensor, including the connection type (ANT+, Bluetooth or internal), device type (for example heart rate), manufacturer, product and battery status. stridelog classifies each run's heart-rate source as chest strap, armband, wrist or none, and uses it to:
+**FIT sensor metadata can be incomplete.** Files may contain `device_info`
+messages identifying the watch and connected sensors, but neither a Garmin
+activity-page listing nor the presence of only watch metadata proves which HR
+source supplied the samples. Inspect a run known to use the armband even when
+Garmin's UI does not list it. Do not equate missing external-sensor metadata
+with wrist HR or infer accuracy from source alone.
 
-- flag less reliable runs (at running intensity, a wrist sensor can mistake your step rate for your heart rate);
+Approved classification policy (2026-11-17): no HR samples means `none`;
+unambiguous source evidence takes precedence. Otherwise, when HR exists and
+`STRIDELOG_HR_ARMBAND_FROM` is configured, an activity whose local date is on or
+after that date may be labelled `armband` with `user_date_rule` provenance.
+This is a user assumption, not sensor confirmation, and never overrides clear
+contrary source evidence. Without sufficient evidence or an applicable rule,
+use `unknown`, not `wrist`. Preserve provenance separately from the source.
+The date stays private in the ignored local `.env`, in `YYYY-MM-DD` format;
+settings arrive in Phase 2 and classification in Phase 3.
+
+stridelog uses source information and its provenance to:
+
+- review source-related reliability limits without treating an assumed source as proof of accurate readings;
 - optionally leave those runs out of heart-rate trends;
 - catch erratic readings, such as those likely in the weeks before the chest strap failed.
 
@@ -395,7 +415,8 @@ The data folder is deliberately outside the repository, so personal data cannot 
 
 - Application settings come from `STRIDELOG_*` environment variables or a `.env` file (ignored by Git) and are checked at startup. `.env.example` lists the setting names without values.
 - The Personal API key follows Garmin's client conventions: `GARMIN_PERSONAL_API_KEY` from the process environment or an explicitly loaded `.env`, or the key file `%USERPROFILE%\.config\garmin\connect-personal-api-key`. The owner selected the ignored local `.env`; restrict its permissions and never force-add it. The bearer cache remains outside the repository, using the protected discovery folder during Phase 1. Neither credential is ever logged.
-- `STRIDELOG_API_KEY_EXPIRES_ON` lets `stridelog doctor` warn you before the key expires.
+- `STRIDELOG_API_KEY_EXPIRES_ON=YYYY-MM-DD` records the actual expiration shown by Garmin, not the creation date. Planned Phase 2 `stridelog doctor` warnings start 14 days before expiry. No external calendar or reminder service is required; the date setting alone does not send notifications, and `doctor` must be run to display a warning.
+- Optional `STRIDELOG_HR_ARMBAND_FROM=YYYY-MM-DD` records an inclusive activity-local date for the approved user-assumed HR-source fallback (Section 3.4). It is private user metadata, not FIT evidence; Phase 2 will validate the setting and Phase 3 will apply it. No date-based classification is implemented during discovery.
 - Optional later improvement: store the key in Windows Credential Manager (backlog).
 
 ### 5.8 Command-line interface (planned)
@@ -452,7 +473,8 @@ erDiagram
         real timer_time_s
         real elapsed_time_s
         real avg_hr_bpm
-        text hr_source "chest_strap, armband, wrist, none"
+        text hr_source "chest_strap, armband, wrist, none, unknown"
+        text hr_source_origin "fit, user_date_rule, unknown"
         text dq_flags
         text raw_path
         int parser_version
@@ -837,8 +859,8 @@ using an ignored local `.env`. The assistant has not read credentials or raw
 responses. An isolated synthetic FIT SDK probe has since passed; no real FIT
 inspection has occurred.
 Private verification uses owner-run commands, with only structural conclusions
-shared. The expiry reminder, remaining response structures, representative samples and
-the remaining Section 13 checks are still pending; both ADRs remain proposed.
+shared. Real-sample inspection, remaining response structures and the remaining
+Section 13 checks are still pending; both ADRs remain proposed.
 The owner subsequently supplied search/details field names only: summary metric
 names differ, details expose a candidate `metadataDTO.lastUpdateDate`, and
 `timeZoneUnitDTO` contains `timeZone`. Values, units, edit-marker semantics,
@@ -849,13 +871,21 @@ and a JSON `null` HRV response for that day only. No account values were shared.
 The synthetic SDK probe verified basic encode/decode and CRC rejection, and
 showed that integrity scanning consumes the stream before decoding. SDK stub
 limitations and the remaining real-file/typing checks are recorded in findings.
+The owner approved private date settings instead of an external expiry reminder
+and an optional armband fallback with explicit user-assumed provenance, and
+confirms both dates are configured privately. Missing sensor metadata must not
+be treated as confirmed wrist HR. All four original sample ZIPs are owner-ready,
+including a known-armband run even though Garmin's activity UI omits the sensor.
+The [output-free FIT notebook](../notebooks/01_fit_discovery.ipynb) is prepared
+and validated on synthetic inputs only. Real-sample reports are still pending;
+no real files have been inspected by the assistant.
 
 Tasks:
 
-- [ ] 1.1 Read the Personal API terms and create a key with a 365-day lifetime. Save it outside the repository, or in the ignored local `.env` selected by the owner, and add the expiry date to your calendar. Terms and the first authenticated check are owner-confirmed; the private expiry reminder remains unconfirmed. Never paste the key into chats, issues or code.
+- [x] 1.1 Read the Personal API terms and create a key with a chosen lifetime. Save it outside the repository, or in the ignored local `.env` selected by the owner, and record its actual expiration as `STRIDELOG_API_KEY_EXPIRES_ON=YYYY-MM-DD`. Terms, the first authenticated check and private expiry configuration are owner-confirmed. No external calendar is required. Never paste the key or private dates into chats, issues or code.
 - [x] 1.2 Explore the official command-line interface in an isolated tool environment: `python -m uv tool run --from garmin-connect-personal-api-python==1.0.0 gc-personal --help`. Activities and download help also pass; authenticated exploration remains in 1.3. No project code or dependencies added.
 - [ ] 1.3 Work through the checklist in Section 13 (activities, wellness, FIT contents, API behavior).
-- [ ] 1.4 Inspect 4 representative FIT files in a notebook with outputs stripped: one from the wrist-only period, one from the chest-strap period, one from the COROS period, and one race.
+- [ ] 1.4 Inspect 4 representative FIT files in a notebook with outputs stripped: one from the wrist-only period, one from the chest-strap period, one known to use the armband (even if unlisted in Garmin's UI), and one race. Record absent or ambiguous metadata without substituting a user assumption for observed evidence.
 - [ ] 1.5 Record the findings (data structures, field names and limits, but no personal values) in `docs/research/personal-api-findings.md`. Then update this plan and accept ADR-0002 and ADR-0004.
 
 **Deliverable**: a findings document and an updated plan.
@@ -868,7 +898,7 @@ Tasks:
 
 Tasks:
 
-- [ ] 2.1 Settings with pydantic-settings (`STRIDELOG_*` environment variables or `.env`): the data folder (default `~/.stridelog`), how many recent days to re-fetch, request pacing, and the key expiry date.
+- [ ] 2.1 Settings with pydantic-settings (`STRIDELOG_*` environment variables or `.env`): the data folder (default `~/.stridelog`), how many recent days to re-fetch, request pacing, the actual key expiry date, and optional armband fallback date. Validate date settings as `YYYY-MM-DD`; keep them private and distinguish them from observed FIT metadata.
 - [ ] 2.2 Database foundation: SQLAlchemy engine and sessions, SQLite settings (WAL, foreign keys), Alembic, and the operations tables.
 - [ ] 2.3 `GarminSource` interface and the `PersonalApiSource` adapter on top of Garmin's client:
   - a shared `requests` session with urllib3 `Retry`, which retries 429 and 5xx errors, waits longer after each attempt and follows `Retry-After`;
@@ -878,7 +908,7 @@ Tasks:
 - [ ] 2.5 Activity sync as described in Section 5.4: running activity types only, change detection, re-fetching the last 7 days, and `--since` for older history.
 - [ ] 2.6 Wellness sync: daily summaries, sleep and HRV, plus Body Battery, stress and steps only if needed. Requests are split to fit each endpoint's date-range cap, and the last 3 days are re-fetched.
 - [ ] 2.7 Sync tracking: a sync position for each dataset, a `sync_run` log, a lock so only one sync runs at a time, and `--dry-run`.
-- [ ] 2.8 Commands: `doctor`, `sync` and `status`.
+- [ ] 2.8 Commands: `doctor`, `sync` and `status`. `doctor` warns 14 days before the configured key expiration and reports expiry clearly, without exposing credentials. Test invalid dates and the warning/expiry boundaries; no external reminder integration.
 - [ ] 2.9 (Should) `import-fit PATH` for FIT files copied from the watch.
 - [ ] 2.10 Tests with a fake `GarminSource` covering:
   - running a sync twice changes nothing the second time;
@@ -909,7 +939,7 @@ Tasks:
   - prefer the higher-precision `enhanced_*` fields;
   - handle runs without GPS (treadmill) and pauses;
   - move corrupt files aside and report them.
-- [ ] 3.3 Heart-rate source classification from `device_info`: chest strap, armband, wrist or none.
+- [ ] 3.3 Heart-rate source classification with provenance: chest strap, armband, wrist, none or unknown. Apply the approved inclusive local-date armband fallback only when HR exists and FIT cannot establish the source; label it user-assumed and never overwrite clear contrary evidence. Test the cutoff boundary, missing/ambiguous metadata, contradictory source evidence and runs without HR. Do not assume missing external-sensor metadata means wrist.
 - [ ] 3.4 JSON mappers for:
   - activity summaries and details: name, event type (turned into the race flag), and any Garmin metrics present;
   - wellness datasets;
@@ -1059,7 +1089,7 @@ Tasks:
 Tasks:
 
 - [ ] 7.1 `stridelog backup` using SQLite's online backup API, plus restore instructions. Integrity checks with `PRAGMA integrity_check` and the raw-archive checksums.
-- [ ] 7.2 Optional daily sync with Windows Task Scheduler. `doctor` warns 14 days before the API key expires.
+- [ ] 7.2 Optional daily sync with Windows Task Scheduler. Document when the Phase 2 `doctor` expiry warning is shown; no external calendar/reminder service is required.
 - [ ] 7.3 `stridelog demo`: a synthetic dataset for screenshots, demos and first-time users without Garmin data.
 - [ ] 7.4 Performance review: profiling, indexes and log rotation.
 - [ ] 7.5 Documentation: user guide, architecture, data model, metrics methodology, and screenshots from demo data.
@@ -1215,7 +1245,7 @@ gh release create v0.1.0 --title "v0.1.0 - Data ingestion and storage" --generat
 | ID | Risk | Likelihood | Impact | Mitigation |
 | --- | --- | --- | --- | --- |
 | R1 | The Personal API (v1.0, only weeks old) changes, shrinks or rate-limits harder | Medium | High | All Garmin access goes through one interface; data already synced stays safe in the raw archive; FIT files can be imported from a folder; follow Garmin's client releases |
-| R2 | The API key expires (after at most 365 days) | Certain, every year | Medium | Expiry date in the settings; `doctor` warns ahead; a clear message on 401 errors; a calendar reminder |
+| R2 | The API key expires (after at most 365 days) | Certain, every year | Medium | Actual expiry date in private settings; `doctor` warns 14 days ahead when run; a clear message on 401 errors; no external reminder required |
 | R3 | Undocumented rate limits and date-range caps | Medium | Medium | Request pacing, growing waits after errors, `Retry-After`, small date-range chunks, resumable sync |
 | R4 | Forerunner 55 limits: GPS elevation noise, no HRV, cadence from the wrist | High | Medium | Smoothing; "approximate" labels; optional fields; confirmed in Phase 1 |
 | R5 | Heart-rate quality: wrist period, failing strap, armband | High | Medium | Heart-rate source tagging; data-quality flags; option to exclude runs from heart-rate trends |
@@ -1259,7 +1289,7 @@ from observed limits, and mark unverified checks explicitly.
 **FIT contents (4 sample runs)**
 
 - [ ] Message types present, and the recording interval (smart recording or every second).
-- [ ] `device_info` entries in each heart-rate period (wrist, chest strap, COROS armband), and how to tell them apart.
+- [ ] `device_info` entries in each heart-rate period (wrist, chest strap, armband), including missing/ambiguous metadata. Inspect a known-armband sample even if Garmin's activity UI omits the sensor; distinguish FIT evidence from the optional private date-based assumption.
 - [ ] Where altitude comes from and how good it is; whether Garmin's corrected elevation appears only in the JSON.
 - [ ] Cadence units. FIT stores running cadence per leg, so steps per minute is double the value plus the fractional part.
 - [ ] Laps (auto-lap distance), timer events for pauses, and the local time offset.
