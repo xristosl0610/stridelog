@@ -764,15 +764,10 @@ Each phase ends with its pull requests merged, CI passing, documentation updated
 
 Before you publish anything:
 
-- [x] 0.0 You confirmed this is a company-managed laptop. Before implementation, Garmin data ingestion, or publishing, confirm your employer permits:
-  - personal side projects, including who owns code written on company equipment;
-  - storing personal health and location data on a work device;
-  - using a personal GitHub account from that device;
-  - using the employer-provided Copilot entitlement for personal projects.
-  A personal GitHub repository does not establish intellectual-property ownership or isolate files from company administration, backups, or monitoring. If permission is unclear, pause and ask IT or the relevant policy owner; use a personal device/account if required. Do not bypass installation or account restrictions.
+- [x] 0.0 Confirm project setup and publication requirements before implementation or data ingestion. Keep credentials and real data private, and respect applicable installation and account restrictions.
 
-Implementation authorization (2026-11-17): the owner confirmed all four uses are
-permitted and approved Phase 0 plus standard user-level uv installation.
+Implementation authorization (2026-11-17): the owner approved Phase 0 plus
+standard user-level uv installation.
 Personal GitHub username: `xristosl0610`; the owner supplied and confirmed the
 repository-local author name and exact no-reply address. Explicit publishing
 confirmation was subsequently granted for the public repository and its Phase 0
@@ -1176,21 +1171,20 @@ Each item in Section 14 gets its own issue, a short design note and a minor rele
 
 Three safeguards keep personal data out of Git: the data folder lives outside the repository by default (`~/.stridelog`), `.gitignore` excludes data files, and the pre-commit hook rejects them.
 
-### 11.2 One-time setup on this machine
+### 11.2 One-time local setup
 
-**Account separation and setup gate**
+**Repository setup and authentication**
 
-- **Repository and project tracking**: code, issues, milestones, pull requests, and Actions belong in `<personal-username>/stridelog`, not a company organization. Confirm the personal username before creating anything.
-- **Commit identity**: configure the name and personal account's no-reply email locally in this repository only. Leave global work settings unchanged. Commit identity is attribution, not authentication.
-- **Git authentication**: pushes must use credentials authorized for the personal repository. VS Code, Git Credential Manager, GitHub CLI, and GitHub browser sessions can use different accounts; a personal remote URL alone does not select personal credentials.
-- **Copilot access**: its signed-in account and subscription are separate from repository ownership. Do not change the professional Copilot login merely to publish to personal GitHub. Whether that entitlement may be used here depends on employer policy and applicable terms; technical separation is not permission.
-- **Conversation history**: continuing this thread does not move it to the personal GitHub account. Do not assume it is stored with, or protected by, the personal repository. Keep durable project decisions in repository documentation and issues, without copying secrets, raw health data, or sensitive work information.
-- **Machine privacy**: local-only storage is not personal-device isolation. Confirm whether the workspace and data directories are subject to corporate backup, sync, or administration before importing Garmin data.
-- **Node.js**: not required for planning, Git setup, or the backend-first phases. Wait for an approved installation route; do not work around Software Center restrictions.
+- **Repository and project tracking**: code, issues, milestones, pull requests, and Actions belong in `<username>/stridelog`. Confirm the destination owner before creating anything.
+- **Commit identity**: configure the name and account's no-reply email locally in this repository only. Leave global settings unchanged. Commit identity is attribution, not authentication.
+- **Git authentication**: pushes must use credentials authorized for the repository. VS Code, Git Credential Manager, GitHub CLI, and GitHub browser sessions can use different accounts; a remote URL alone does not select credentials.
+- **Project decisions**: keep durable decisions in repository documentation and issues, without copying secrets, raw health data or private conversation details.
+- **Local data privacy**: restrict access to data directories and review backup and synchronization settings before importing Garmin data.
+- **Node.js**: not required for planning, Git setup, or the backend-first phases. Use an approved installation route and respect installation restrictions.
 
-Before any publishing, inspect the repository-local Git identity and remote, confirm the authenticated account in the chosen publishing tool, and explicitly verify the destination owner. If using the optional CLI, `gh auth status` checks CLI authentication but does not by itself prove which credentials Git will use. Do not switch accounts, replace credentials, or change credential helpers without reviewing the effect on work repositories.
+Before any publishing, inspect the repository-local Git identity and remote, confirm the authenticated account in the chosen publishing tool, and explicitly verify the destination owner. If using the optional CLI, `gh auth status` checks CLI authentication but does not by itself prove which credentials Git will use. Do not switch accounts, replace credentials, or change credential helpers without reviewing the effect on other repositories.
 
-Information needed when Phase 0 is authorized: your personal GitHub username, the public commit name and personal no-reply email you want to use, and confirmation that the relevant employer policies permit this setup. Never provide passwords, tokens, recovery codes, or private keys in chat. No account setup or publishing is authorized by this plan alone.
+Information needed when Phase 0 is authorized: the destination GitHub username, public commit name and no-reply email to use. Never provide passwords, tokens, recovery codes, or private keys in chat. No account setup or publishing is authorized by this plan alone.
 
 ```powershell
 # Tooling
@@ -1199,8 +1193,7 @@ uv --version              # expect 0.13 or newer
 py -3.14 --version        # expect Python 3.14.x
 uv tool install pre-commit
 
-# GitHub CLI (recommended, optional). Use whichever installation route your company allows:
-#   - the company Software Center
+# GitHub CLI (recommended, optional). Use an approved installation route:
 #   - winget install --id GitHub.cli -e
 #   - the installer from https://cli.github.com
 gh auth login             # GitHub.com > HTTPS > log in with a web browser
@@ -1217,7 +1210,7 @@ Set-Location C:\Users\lathourakisc\Projects\side\stridelog
 
 git init -b main
 git config user.name  "Christos Lathourakis"
-git config user.email "<id>+<username>@users.noreply.github.com"   # this repository only: keeps your work email out of a public repo
+git config user.email "<id>+<username>@users.noreply.github.com"   # this repository only: keeps your private email out of a public repo
 pre-commit install                                                  # once the configuration exists (Phase 0, task 0.6)
 ```
 
@@ -1313,7 +1306,7 @@ gh release create v0.1.0 --title "v0.1.0 - Data ingestion and storage" --generat
 | R5 | Heart-rate quality: wrist period, failing strap, armband | High | Medium | Heart-rate source tagging; data-quality flags; option to exclude runs from heart-rate trends |
 | R6 | Personal data or secrets leak through the public repository | Low | High | Data outside the repository; `.gitignore`; pre-commit hooks; gitleaks; push protection; synthetic test files and demo data; stripped notebooks |
 | R7 | Node.js is still unavailable when the frontend starts | Medium | Medium | Backend and API built first; Gate G1 options; CI builds the frontend |
-| R8 | Company-managed machine: who owns side-project code; personal data on a work device | Unknown | High | Check your employer's policy before publishing (task 0.0); consider keeping the data on a personal machine |
+| R8 | Local data exposed through broad permissions, backups or synchronization | Unknown | High | Restrict directory access and review backup and synchronization settings before ingestion |
 | R9 | Scope creep | High | Medium | MoSCoW priorities, phase gates, backlog discipline |
 | R10 | License problems (GPL code, FIT SDK terms) | Low | High | No code copied from GarminDB; FIT SDK installed only from PyPI, never copied into the repository or bundled; dependency licenses checked in every pull request that adds a dependency |
 | R11 | Time-zone and daylight-saving errors in daily and weekly totals | Medium | Medium | Store UTC plus offset and local date; tests across daylight-saving changes and travel |

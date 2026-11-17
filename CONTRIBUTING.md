@@ -21,7 +21,7 @@ Gitleaks action independently of the local hook.
 
 If tool executables are not on PATH, use `python -m uv` and the executable
 at `%USERPROFILE%\.local\bin\pre-commit.exe`, or add those directories to the
-current terminal PATH. Do not change global corporate tooling or credentials.
+current terminal PATH. Do not change global tooling configuration or credentials.
 
 For the approved workspace-local Gitleaks installation, prepare each PowerShell
 terminal before running hooks or committing:
