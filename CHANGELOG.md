@@ -13,3 +13,7 @@ Versioning. No release has been published.
 - Foundation documentation and initial architecture decisions.
 - Phase 1 discovery findings separating published client behavior, documented
   API limits and pending private verification; verified workspace rename.
+- Owner-reported activity API field structures and their implications for metric
+  mapping, time zones and incremental edit detection.
+- One-day wellness response structures and synthetic FIT SDK feasibility
+  findings, including integrity-scan stream handling.
