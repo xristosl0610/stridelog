@@ -1,6 +1,7 @@
 # Architecture
 
-Status: foundation only. This document distinguishes intended architecture from
+Status: raw ingestion and typed storage implemented; real-archive parser acceptance
+remains owner-run. This document distinguishes intended architecture from
 implemented behavior; the [project plan](PLAN.md) is the detailed roadmap.
 
 ## Implemented
@@ -16,10 +17,13 @@ implemented behavior; the [project plan](PLAN.md) is the detailed roadmap.
 - Checksum manifest, immutable originals and content-versioned JSON with atomic
   current views; no-write/no-network dry-run and synthetic failure/resume tests.
 - Privacy checks, synthetic tests and development/CI configuration.
+- Typed FIT/JSON interpretation, conservative HR provenance, measurement migrations,
+  offline transactional `rebuild` and private `dq-report`; see the
+  [data model](data-model.md) for units, supported shapes and screening thresholds.
 - Output-free owner-run FIT discovery notebook, validated with synthetic inputs;
   this is not the application parser or HR-source classification implementation.
 
-## Data flow (parsing and everything after it remain planned)
+## Data flow (analytics, API and web remain planned)
 
 Garmin source interface -> immutable raw archive -> typed parsers -> SQLite ->
 Polars analytics -> local FastAPI -> React/TypeScript.
@@ -39,7 +43,8 @@ The approved Phase 3 HR-source policy preserves provenance: a private
 activities with HR and insufficient source evidence, never replacing clear
 contrary evidence. Apply it inclusively to the activity's local date. Unknown
 source is distinct from wrist HR; no HR is distinct from unknown source.
-The settings are validated now; classification remains Phase 3 behavior.
+Rebuild applies this policy and records whether the label came from FIT model
+evidence or a user assumption.
 
 The private `STRIDELOG_API_KEY_EXPIRES_ON` setting records actual expiration in
 `YYYY-MM-DD` format. `doctor` warns within 14 days of expiry when run;
@@ -84,10 +89,13 @@ are withheld, and dependency logging is suppressed only during source use.
 ## Open decisions
 
 - Optional `import-fit` remains a Should task, not part of completed core sync.
+- Final FIT SDK ADR acceptance and v0.1.0 wait for owner-run rebuild/spot checks.
 - External map tiles conflict with Garmin-only outgoing requests and can reveal
   viewed locations. Resolve explicitly before Phase 6; no external maps yet.
-- Database relationships must permit rebuilds without cascading into annotations.
-  Decide and test the rebuild transaction strategy in Phase 3.
+- User annotations intentionally have no foreign key into rebuildable activity
+  rows. Measurement replacement is transactional and shares the sync lock; storage
+  failures/interruption roll back measurements without changing operations or raw
+  inputs. Invalid FIT is copied to quarantine, never moved out of the archive.
 
 See [ADRs](adr/0001-record-architecture-decisions.md) for accepted and provisional
-decisions. Detailed schema and metrics documentation arrive in Phases 3 and 4.
+decisions. Detailed schema is documented now; metrics documentation remains Phase 4.

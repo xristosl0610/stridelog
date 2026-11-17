@@ -34,7 +34,7 @@ def sync_lock(data_dir: Path) -> Generator[None]:
         except OSError as error:
             if error.errno in {errno.EACCES, errno.EAGAIN, errno.EDEADLK}:
                 raise StridelogError(
-                    "Another sync holds the lock; retry after it finishes."
+                    "Another sync/rebuild holds the lock; retry after it finishes."
                 ) from None
             raise
         try:

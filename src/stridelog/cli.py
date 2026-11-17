@@ -16,6 +16,8 @@ from stridelog.diagnostics import doctor_report
 from stridelog.errors import StridelogError
 from stridelog.garmin import open_personal_source
 from stridelog.ingest.sync import synchronize
+from stridelog.rebuild import quality_report
+from stridelog.rebuild import rebuild as rebuild_archive
 
 app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
 
@@ -126,3 +128,40 @@ def sync(
     else:
         typer.echo(f"Updated raw documents: {report.updated_documents}")
         typer.echo(f"Original ZIPs downloaded: {report.downloaded_originals}")
+
+
+@app.command()
+def rebuild() -> None:
+    """Rebuild typed measurements offline; preserve raw files and user annotations."""
+    try:
+        report = rebuild_archive(_settings())
+    except (StridelogError, SQLAlchemyError, MigrationError, OSError) as error:
+        _failure(error)
+    else:
+        typer.echo(f"Activities imported: {report.imported_activities}")
+        typer.echo(f"Activities reported as failed: {report.failed_activities}")
+        typer.echo(f"Documents reported as failed: {report.failed_documents}")
+        typer.echo(f"Rebuild seconds: {report.elapsed_s:.2f}")
+        comparison = (
+            "not available"
+            if report.matches_previous is None
+            else "yes"
+            if report.matches_previous
+            else "no"
+        )
+        typer.echo(f"Matches previous rebuild: {comparison}")
+        typer.echo("Private findings saved under the data directory's reports folder.")
+        if report.failed_activities or report.failed_documents:
+            raise typer.Exit(code=1)
+
+
+@app.command("dq-report")
+def dq_report() -> None:
+    """Refresh the private quality report from the last rebuild's stored findings."""
+    try:
+        count = quality_report(_settings())
+    except (StridelogError, SQLAlchemyError, MigrationError, OSError) as error:
+        _failure(error)
+    else:
+        typer.echo(f"Quality findings: {count}")
+        typer.echo("Private report saved under the data directory's reports folder.")

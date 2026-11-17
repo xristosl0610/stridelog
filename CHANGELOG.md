@@ -9,7 +9,12 @@ Versioning. No release has been published.
 
 - Phase 3 typed measurement/user-annotation migration and FIT parser boundary,
   synthetic Encoder fixtures, normalized units and conservative HR provenance.
-  Final real-archive parser acceptance and rebuild commands remain pending.
+  Final real-archive parser acceptance remains pending.
+- Offline transactional `rebuild` with annotation/operations/raw preservation,
+  checksum provenance, repeat-result fingerprints and recorded runtime.
+- Private `dq-report`, per-input failure reasons, immutable-original-preserving
+  quarantine copies and heuristic HR/GPS/total/sensor checks. Unverified populated
+  JSON schemas fail explicitly rather than producing fabricated measurements.
 - Phase 2 official Personal API adapter with paced attempts, bounded retries,
   `Retry-After`, one-refresh authentication recovery and atomic bearer caching.
 - Running-only raw activity sync, one-day daily/sleep/HRV requests, current

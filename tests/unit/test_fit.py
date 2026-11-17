@@ -96,3 +96,40 @@ def test_sensor_entries_deduplicated_and_identifiers_excluded() -> None:
     assert len(parsed.sensors) == 1
     assert parsed.sensors[0].device_type == "heart_rate"
     assert classify_hr(parsed, None, None) == ("armband", "fit")
+
+
+def test_sdk_named_garmin_hrm_product_is_strap_evidence_without_a_product_name() -> None:
+    parsed = decode_fit(running_fit())
+    encoder = Encoder()
+    encoder.on_mesg(Profile["mesg_num"]["FILE_ID"], {"type": "activity"})
+    for _ in range(2):
+        encoder.on_mesg(
+            Profile["mesg_num"]["DEVICE_INFO"],
+            {
+                "device_index": 1,
+                "source_type": "antplus",
+                "device_type": 120,
+                "manufacturer": "garmin",
+                "product": 3299,
+                "serial_number": 12345678,
+            },
+        )
+    encoder.on_mesg(
+        Profile["mesg_num"]["RECORD"],
+        {
+            "timestamp": parsed.start_time_utc,
+            "heart_rate": 140,
+        },
+    )
+    encoder.on_mesg(
+        Profile["mesg_num"]["SESSION"],
+        {
+            "sport": "running",
+            "start_time": parsed.start_time_utc,
+        },
+    )
+    result = decode_fit(encoder.close())
+    assert len(result.sensors) == 1
+    assert result.sensors[0].product == "hrm_dual"
+    assert "12345678" not in repr(result.sensors)
+    assert classify_hr(result, date(2030, 3, 31), date(2030, 1, 1)) == ("chest_strap", "fit")
