@@ -730,7 +730,9 @@ Implementation authorization (2026-11-17): the owner confirmed all four uses are
 permitted and approved Phase 0 plus standard user-level uv installation.
 Personal GitHub username: `xristosl0610`; the owner supplied and confirmed the
 repository-local author name and exact no-reply address. Explicit publishing
-confirmation is still pending. Keep the current workspace directory
+confirmation was subsequently granted for the public repository and its Phase 0
+controls. Authentication was verified as `xristosl0610` before publishing.
+Keep the current workspace directory
 until VS Code can be closed and it can be renamed safely. Add dependencies only
 when their phase needs them. Track verified completion below; do not mark remote
 controls complete before they have been exercised on GitHub.
@@ -744,12 +746,16 @@ Gitleaks 8.24.2 was installed with separate approval under ignored `.tools`,
 after its official release checksum was verified. Local Pyright is deferred:
 Node.js is unavailable and must not be automatically downloaded to bypass policy.
 Pylance reports no workspace errors; this is not a substitute for CI Pyright.
-No Windows/Linux GitHub CI, branch protection, CodeQL or remote controls have
-been verified yet. The local Git repository uses `main` and has no remote.
+A clean local clone also passed locked installation and all 18 tests.
+The foundation is published at <https://github.com/xristosl0610/stridelog>.
+Initial GitHub CI passed strict Pyright on both operating systems and secrets
+scanning, but exposed an ANSI-sensitive help-text assertion. The verification PR
+will fix that assertion and exercise required checks before merging.
+Branch protection and the final passing Windows/Linux runs remain to be verified.
 
 Tasks:
 
-- [ ] 0.1 Prepare your machine: update uv to 0.13 or newer; confirm Python 3.14; install the GitHub CLI or use the web-only steps (Section 11). Install these VS Code extensions: Python with Pylance, Ruff, Jupyter, and GitHub Pull Requests.
+- [x] 0.1 Prepare your machine: update uv to 0.13 or newer; confirm Python 3.14; install the GitHub CLI or use the web-only steps (Section 11). Install these VS Code extensions: Python with Pylance, Ruff, Jupyter, and GitHub Pull Requests.
 - [ ] 0.2 Rename the folder `better_strava` to `stridelog`, run `git init -b main`, and set a Git identity for this repository only, using your GitHub no-reply email.
 - [x] 0.3 Add repository housekeeping files: `.gitignore`, `.gitattributes` (LF line endings), `.editorconfig`, and `.env.example` (setting names only, no values).
 - [x] 0.4 Create the Python project with uv:
@@ -765,7 +771,7 @@ Tasks:
   - a hook that rejects data files (`.fit`, `.zip`, `.sqlite`, `.db`, `.gpx`, `.tcx`).
 - [x] 0.7 Write the documentation skeleton: README, LICENSE (MIT), CHANGELOG, CONTRIBUTING, SECURITY, `docs/PLAN.md` (this file), `docs/architecture.md`, and ADR-0001 to ADR-0008 (Section 9.5).
 - [x] 0.8 Add project conventions to `.github/copilot-instructions.md`: package layout, SI units, never log secrets, never commit data.
-- [ ] 0.9 Create the public GitHub repository and push the first commit, which includes the CI workflow.
+- [x] 0.9 Create the public GitHub repository and push the first commit, which includes the CI workflow.
 - [ ] 0.10 Configure the repository settings and security features (Section 11.5). After CI has run once, add the `main` ruleset with the CI jobs as required checks; GitHub only offers checks that have already run.
 - [ ] 0.11 Add Dependabot, CodeQL, issue and pull request templates, labels, and one milestone for each of Phases 0 to 8.
 - [ ] 0.12 Test the workflow end to end: open a small pull request (for example, adding the templates) and merge it only after its checks pass.
