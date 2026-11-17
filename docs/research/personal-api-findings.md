@@ -380,9 +380,15 @@ Synthetic SDK decoding confirms ANT+ type 120 and BLE type 1 both expand to
 `heart_rate`, while raw ANT type 120 remains numeric. These aliases identify a
 protocol device category, not manufacturer, model, wear location or HR-sample
 assignment. A BLE heart-rate device can be a chest strap or an armband.
-The original owner reports above did not include alias values; a revised
-owner-run armband projection remains to be collected. The private date
-fallback is not removed or upgraded to FIT-confirmed classification.
+The original owner reports above did not include alias values. The owner has
+now rerun the corrected notebook successfully and supplied the armband
+projection with `source_type=bluetooth_low_energy`, `device_type=1` and
+`ble_device_type=heart_rate`. That entry still has no manufacturer/product.
+This confirms a BLE heart-rate device entry in the real-file projection, not
+COROS identity or assignment of every HR sample to that device. Repeated
+projected entries do not establish multiple physical sensors. No further
+sensor-output rerun is needed for this category check. The private date fallback
+is not removed or upgraded to FIT-confirmed classification.
 
 No serial-number values, private paths, dates, locations or physiological
 values were shared. No original files or local notebook outputs are added to
@@ -407,7 +413,7 @@ conclusions only.
 | Wellness | Core one-day shapes/field presence recorded above; range caps/history, optional values, broader HRV availability and VO2 max result remain pending |
 | Zones | Response structure and per-sport settings; actual zone/HR values stay private |
 | FIT messages | Four owner-run projections received; common fields/groups and variable timestamp intervals recorded above; watch recording setting unverified |
-| FIT sensors | Protocol distinctions recorded above; aliases now checked synthetically; revised owner armband projection and exact source/model identity remain unresolved |
+| FIT sensors | Protocol aliases checked synthetically and owner armband BLE `heart_rate` projection confirmed; exact source/model identity and HR-sample provenance remain unresolved |
 | FIT timing and units | Cadence scaling, elevation source/precision, lap and pause events, and offset handling |
 | HTTP behavior | Status/structure observations and any naturally encountered rate-limit headers under paced discovery |
 | Token timing | Locally checked lifetime only; never publish tokens, payloads or exact expiry |
@@ -444,7 +450,7 @@ provoke a change marker.
 
 | Area | Local action | Share only |
 | --- | --- | --- |
-| Armband device category | Rerun the corrected FIT notebook in the discovery kernel | The armband `sensor_models_not_identifiers` block; no paths or serial numbers |
+| Armband device category | Complete: owner supplied the corrected BLE `heart_rate` projection | No further sensor-output rerun needed; exact identity/provenance remains unverified |
 | Recording setting | Check the watch's recording configuration; distinguish the current setting from historical evidence | `smart`, `every_second` or `unknown`, and whether historical applicability is known |
 | Cadence/elevation/timing | Privately compare FIT fields with the activity UI and inspect lap/timer/local-time relationships | Confirmed conversion/relationship or `unverified`; no measurements, timestamps or offsets |
 | Known race and edit marker | Inspect the saved known-race details and any naturally observed before/after edit evidence | Event-type key, JSON kind/format of `lastUpdateDate`, and a yes/no/unverified change conclusion; no IDs, titles or timestamp values |
