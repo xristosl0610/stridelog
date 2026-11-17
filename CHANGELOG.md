@@ -31,3 +31,5 @@ Versioning. No release has been published.
 
 - FIT notebook projection now includes ANT+ and Bluetooth LE device-type aliases
   while retaining raw ANT metadata, without inferring armband identity.
+- FIT notebook field-name projection handles unmapped numeric keys without
+  mixing them into string sorting; a synthetic decoder regression covers it.
