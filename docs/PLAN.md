@@ -4,7 +4,7 @@ Local-first running analytics for your Garmin data. stridelog mirrors your runs 
 
 | Item | Value |
 | --- | --- |
-| Status | Phase 0 approved and in progress; local foundation being implemented. Later phases remain gated. |
+| Status | Phase 0 foundation published and verified; workspace rename outstanding. Phase 1 awaits approval. |
 | Owner | Christos Lathourakis |
 | Last updated | 2026-11-17 |
 | Repository | `stridelog` on your personal GitHub account (public, MIT), created in Phase 0 |
@@ -759,7 +759,13 @@ attempt with failing checks were both rejected. Secret scanning/push protection,
 Dependabot alerts/fixes, private vulnerability reporting and weekly Python
 CodeQL are enabled; the first CodeQL scan found no alerts. All nine phase
 milestones, Phase 0 task issues, labels and templates exist.
-PR #2 completes the end-to-end verification after its final checks pass.
+[PR #2](https://github.com/xristosl0610/stridelog/pull/2) was squash-merged only after
+the final Windows/Linux and secrets checks passed and review threads were
+addressed. Final suite: 21 tests with 100% package coverage. The folder rename in
+[issue #5](https://github.com/xristosl0610/stridelog/issues/5) is the only remaining
+Phase 0 task: close VS Code, rename `better_strava` to `stridelog`, reopen it and
+run `uv sync --locked` to refresh the environment after moving the workspace.
+No Garmin credentials or personal activity data have been accessed.
 
 Tasks:
 
@@ -782,7 +788,7 @@ Tasks:
 - [x] 0.9 Create the public GitHub repository and push the first commit, which includes the CI workflow.
 - [x] 0.10 Configure the repository settings and security features (Section 11.5). After CI has run once, add the `main` ruleset with the CI jobs as required checks; GitHub only offers checks that have already run.
 - [x] 0.11 Add Dependabot, CodeQL, issue and pull request templates, labels, and one milestone for each of Phases 0 to 8.
-- [ ] 0.12 Test the workflow end to end: open a small pull request (for example, adding the templates) and merge it only after its checks pass.
+- [x] 0.12 Test the workflow end to end: open a small pull request (for example, adding the templates) and merge it only after its checks pass.
 
 **Deliverable**: a public repository with passing CI, a protected `main` branch and the documentation skeleton.
 
