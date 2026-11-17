@@ -599,6 +599,14 @@ authorized by this report.
 
 ### Offline review of the saved API responses
 
+Phase 3 mapping correction: the public Swagger `MovementV2DTO.steps` property
+references `MovementValueV2DTO`. Its `value` field is the actual daily count;
+`goal` and `distanceInMeters` are distinct fields. The earlier owner projection
+already established an object, not a scalar. Rechecked through the
+[public schema UI](https://developer.garmin.com/gc-developer-program/personal/swagger-docs/)
+without authentication or API execution. Synthetic tests now use that nested
+shape; no private document was read to establish this correction.
+
 The public Swagger schemas were checked again, without authentication or
 executing any API operation. The missing projections have documented field
 names outside the original allowlist:
