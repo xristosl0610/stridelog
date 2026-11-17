@@ -696,8 +696,8 @@ Inspect the final ACL locally: the newly created directory should grant only
 your current user's SID full control, inherited by files and subdirectories,
 with no broad user/group access. If that is not the result, stop and resolve it
 before saving credentials or responses. A unique fresh directory avoids
-retaining explicit grants from an existing folder. These ACLs do not isolate
-data from administrators, corporate monitoring or backups.
+retaining explicit grants from an existing folder. Folder permissions do not
+control backup or synchronization settings.
 
 Check the actual key expiration privately in Garmin Connect and record it as
 `STRIDELOG_API_KEY_EXPIRES_ON=YYYY-MM-DD` in `.env`. No external reminder is

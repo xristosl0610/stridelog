@@ -100,9 +100,7 @@ planned. Only Garmin requests are needed for sync. Future external map tiles
 require an explicit privacy decision before implementation.
 
 Never put API keys, tokens, health/location data or real activity files in Git,
-issues, pull requests or chat. No Garmin key is required for tests. On managed
-devices, obtain employer permission for code ownership, personal data storage,
-personal GitHub access and Copilot use first.
+issues, pull requests or chat. No Garmin key is required for tests.
 
 ## Roadmap and license
 
