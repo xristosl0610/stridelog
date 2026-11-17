@@ -26,6 +26,9 @@ Versioning. No release has been published.
   verification limits.
 - Repeatable isolated FIT discovery checks, strict SDK-boundary typing
   verification and a bounded checklist for remaining owner-run evidence.
+- Confirmed, owner-run API discovery helper with `.env` loading, protected local
+  response storage, allowlisted structural reporting and offline transport/privacy
+  checks; no ingestion or application dependencies.
 
 ### Fixed
 
