@@ -887,6 +887,17 @@ typing passes. The revised owner-run armband projection now confirms a BLE
 `heart_rate` device entry without manufacturer/product; it does not prove COROS
 identity or HR-sample provenance. Real timing/units checks remain pending; no
 real files were inspected by the assistant.
+The owner has now supplied the bounded ten-GET API report: all probes succeeded,
+the two search-page ID sets are disjoint, and the limited historical query is
+nonempty. Known-race details match `race`, and the candidate update marker is
+an ISO datetime string; actual edit behavior remains untested. Activity-types
+and VO2 endpoints returned nonempty arrays, but their projected field maps omit
+all first-item fields, so taxonomy and VO2 metric mappings are not verified.
+Zones expose a string `sport` field with other fields omitted. HRV is null for
+the selected day only. Token claims establish only a broad 1-48-hour band, not
+exactly 24 hours or key expiration. These findings do not establish full history,
+page/range maxima or the remaining FIT timing/units. No additional request batch,
+ADR acceptance or Phase 2 ingestion is authorized by this report.
 
 Tasks:
 
@@ -1278,10 +1289,10 @@ from observed limits, and mark unverified checks explicitly.
 
 **Activities**
 
-- [ ] Maximum page size of activity search, total number of runs, and the oldest activity returned (expected: January 2025).
-- [ ] Activity type keys in your history (running, trail, treadmill, track) and whether `activityTypes/simple` responds.
-- [ ] Event type in search and details: does a known race show `race`?
-- [ ] Field for detecting changes, such as a last-update timestamp, in search or details.
+- [ ] Maximum page size of activity search, total number of runs, and the oldest activity returned (expected: January 2025). Requests using `limit=20` succeeded with disjoint page IDs, and the limited historical sample is nonempty; maxima, exact page lengths and complete history remain unverified.
+- [ ] Activity type keys in your history (running, trail, treadmill, track) and whether `activityTypes/simple` responds. The endpoint returned a nonempty array; taxonomy field names/values were omitted by the projection.
+- [ ] Event type in search and details: does a known race show `race`? Confirmed in known-race details; search-side value remains unverified.
+- [ ] Field for detecting changes, such as a last-update timestamp, in search or details. Details `metadataDTO.lastUpdateDate` is an ISO datetime string; edit behavior remains untested.
 - [ ] Summary fields available: distance, durations, heart rate, elevation (and whether it is corrected), VO2 max, training effect.
 - [ ] Whether the search response alone has everything needed, so the details request can be skipped.
 - [ ] Whether the download ZIP contains exactly one FIT file, and its typical size.
@@ -1291,8 +1302,8 @@ from observed limits, and mark unverified checks explicitly.
 - [ ] The date-range cap and earliest available date for daily summaries, sleep, HRV, Body Battery, stress and steps.
 - [ ] Which fields exist for resting heart rate, sleep duration and stages (and sleep score, if any), Body Battery, stress and steps.
 - [ ] Whether the Forerunner 55 produces any HRV data at all.
-- [ ] Whether the daily VO2 max endpoint returns data or 404.
-- [ ] Heart-rate zones: which zones, whether they are per sport, and the maximum and resting heart rate.
+- [x] Whether the daily VO2 max endpoint returns data or 404. Owner batch returned a nonempty array of objects, not 404; omitted fields leave VO2 metric mapping and units unverified.
+- [ ] Heart-rate zones: which zones, whether they are per sport, and the maximum and resting heart rate. Nonempty array and string `sport` field confirmed; zone/profile fields and per-sport semantics remain unverified.
 
 **FIT contents (4 sample runs)**
 
@@ -1305,9 +1316,9 @@ from observed limits, and mark unverified checks explicitly.
 
 **API behavior and terms**
 
-- [ ] Observe normal discovery traffic paced at no more than 1 request per second; record any naturally encountered 429 and `Retry-After` behavior. Do not generate hundreds of requests solely as a load test; stop or defer on rate limiting.
+- [x] Observe normal discovery traffic paced at no more than 1 request per second; record any naturally encountered 429 and `Retry-After` behavior. All ten probes succeeded through the paced helper; no live rate-limit/header behavior was observed. Do not generate hundreds of requests solely as a load test; stop or defer on rate limiting.
 - [ ] Error formats for 401, 404 and 429, using documentation or naturally encountered errors. Do not invalidate a working key or provoke 429; mark unobserved behavior explicitly.
-- [ ] Token lifetime, checked locally from JWT timing claims when present (or time of issue and `exp`). Never publish the token, its decoded payload or exact account-specific expiry.
+- [x] Token lifetime, checked locally from JWT timing claims when present (or time of issue and `exp`). Owner report confirms both claims and only a broad 1-48-hour band, not an exact 24-hour lifetime; claims are unverified and do not establish key expiration. Never publish the token, its decoded payload or exact account-specific expiry.
 - [ ] Anything in the Personal API terms about storing data locally or publishing code.
 
 ---

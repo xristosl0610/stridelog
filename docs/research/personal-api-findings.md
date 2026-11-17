@@ -1,13 +1,13 @@
 # Personal API discovery findings
 
-Status: Phase 1 in progress; public-source checks and owner-reported authentication success.
+Status: Phase 1 in progress; public-source checks and owner-reported structural projections.
 Verified: 2026-11-17.
 Milestone: [Phase 1 - Discovery spike](https://github.com/xristosl0610/stridelog/milestone/2).
 
 ## Evidence and scope
 
 This document separates independently checked public facts from owner-reported
-private checks. The assistant has not read any key, token cache, account
+private checks. The assistant has not read any key, token cache, raw account
 response or real FIT file.
 Neither ADR-0002 nor ADR-0004 is ready for acceptance. Ingestion remains blocked
 until the [Phase 1 checklist](../PLAN.md#13-phase-1-verification-checklist) is
@@ -56,23 +56,24 @@ Important release differences:
 | Generic authenticated `get(path, params=...)` | Present | Present |
 | Search, details, ZIP download and core wellness wrappers | Present | Present |
 
-Do not invoke `activity-types` or `vo2-max` with the pinned 1.0.0 CLI. A later
-approved discovery step can use its generic GET interface for documented paths;
-there is no need to install an unpinned Git revision.
+Do not invoke `activity-types` or `vo2-max` with the pinned 1.0.0 CLI. The
+approved discovery helper uses its generic GET interface for documented paths;
+the owner-reported batch below confirms access without an unpinned Git revision.
 
-## Documented API behavior, not account observations
+## Published API behavior and verification limits
 
 The official overview confirms the host `personal.connectapi.garmin.com` and
 an API-key-to-token POST exchange. The plan's approximately 24-hour lifetime is
 an earlier research expectation, not an account observation established here.
-The account-issued expiry is still unverified; cache decisions must use the
-issued `exp` claim, not a hard-coded 24 hours.
+The owner-reported batch below establishes only a broad 1-48-hour band from
+unverified timing claims. It does not establish exactly 24 hours; cache
+decisions must use the issued `exp` claim, not a hard-coded lifetime.
 
 The current Swagger page lists both activity types and daily VO2 max. Earlier
 plan notes describing them as missing from the specification are superseded.
 Being documented does not establish account access, returned data or history.
 
-| Dataset | Documented query / range information | Still to verify locally |
+| Dataset | Documented query / range information and explicitly labelled owner observations | Still to verify locally |
 | --- | --- | --- |
 | Activity search | `start` defaults to 0; `limit` defaults to 99; date filters use local activity start dates | Maximum accepted page size, pagination stability, running type selection and history coverage |
 | Daily summaries | Up to 1 year | Inclusive boundaries, actual cap, earliest data and field completeness |
@@ -81,23 +82,25 @@ Being documented does not establish account access, returned data or history.
 | Body Battery | Up to 31 days | Cap, history and whether daily summaries already suffice |
 | Steps | Up to 28 days | Cap, history and whether daily summaries already suffice |
 | Stress | Up to 28 days | Cap, history and whether daily summaries already suffice |
-| Heart-rate zones | Endpoint listed | Per-sport structure and which profile settings are available |
-| Daily VO2 max | Endpoint listed | Successful access, empty result or error; no assumed availability |
+| Heart-rate zones | Endpoint listed; owner batch returned a nonempty array with a string `sport` field | Zone/profile field mapping and per-sport semantics |
+| Daily VO2 max | Endpoint listed; owner batch returned a nonempty array of objects, not 404 | Metric field names, units and optional values; omitted projection fields are not absent data |
 
 The search default of 99 is not a verified maximum. The CLI instead defaults
 to 20. Do not turn either default into a pagination limit assumption.
 Similarly, "1 year" is not evidence for a particular inclusive day count.
 
 The released daily-summary wrapper documents an object containing a `data`
-array, even for one day. Confirm this against a private response before writing
-models; other wrapper return annotations allow arbitrary JSON.
+array, even for one day. Owner-reported projections confirm that container;
+they are not a complete schema. Other wrapper return annotations allow arbitrary
+JSON.
 
 ## Owner-reported activity field inspection
 
 The owner inspected a saved search item and its corresponding details response
 locally and shared field names only. This is one sample, not a complete schema
 or evidence that any particular value is populated. The top-level search
-container label was not included in the report.
+container label was not included in that initial report; the bounded batch
+below subsequently confirms arrays, race-details behavior and marker format.
 
 | Area | Observed field names / structure |
 | --- | --- |
@@ -106,11 +109,11 @@ container label was not included in the report.
 | Search classification | `activityType`, `eventType`; nested schemas and race semantics not yet checked |
 | Details containers | `summaryDTO`, `activityTypeDTO`, `eventTypeDTO`, `metadataDTO`, `timeZoneUnitDTO` |
 | Activity type details | `activityTypeDTO` has `typeId`, `parentTypeId`, `typeKey` |
-| Event type details | `eventTypeDTO` has `typeId`, `typeKey`; a known race still needs private validation |
+| Event type details | `eventTypeDTO` has `typeId`, `typeKey`; the later bounded batch confirms `race` for the privately selected known-race details |
 | Additional details metrics | `minHR`, `averageMovingSpeed`, `directWorkoutFeel`, `directWorkoutRpe`; presence does not imply non-null values |
 | Different metric names | Search uses `averageRunningCadenceInStepsPerMinute`, `maxRunningCadenceInStepsPerMinute`, `avgStrideLength`; details use `averageRunCadence`, `maxRunCadence`, `strideLength` |
 | Details metadata | `lastUpdateDate`, `uploadedDate`, `elevationCorrected`, `lapCount`, `sensors` are present |
-| Time-zone container | `timeZoneUnitDTO` has `timeZone`; its value/type and offset derivation remain unverified |
+| Time-zone container | `timeZoneUnitDTO` has `timeZone`; the later bounded batch confirms a string kind, not its value or offset derivation |
 
 Consequences for the next implementation plan:
 
@@ -118,8 +121,9 @@ Consequences for the next implementation plan:
   schemas; units and nullability must be verified before mapping similarly named
   metrics.
 - `metadataDTO.lastUpdateDate` is a candidate edit marker, found only in the
-  details sample. Presence alone does not establish its format or whether every
-  relevant edit updates it. Start/end/upload times are not substitutes.
+  details sample. The later batch confirms an ISO datetime string, but not
+  whether every relevant edit updates it. Start/end/upload times are not
+  substitutes.
 - Do not assume summary comparison detects details-only changes. Phase 2 needs
   an explicit detail-refresh/reconciliation policy, including the limits of a
   recent-activity lookback for detecting edits to older activities.
@@ -398,25 +402,26 @@ not satisfy the remaining FIT timing/units or ADR acceptance gates.
 ## Private verification remaining
 
 The owner confirms terms review, private-folder permission setup and a
-successful one-activity search command with released client 1.0.0. This verifies
-the basic authentication/request path. Search/details and one-day wellness field
-names have since been inspected locally and are recorded above; values,
-pagination, history, remaining endpoints and token timing remain unverified.
+successful one-activity search command with released client 1.0.0, followed by
+the approved ten-GET batch reported below. Search/details and one-day wellness
+structures, disjoint search pages, known-race details, endpoint access and a
+broad token-lifetime band are now observed. Full history, page/range maxima,
+remaining field mappings, edit behavior and FIT timing/units remain unresolved.
 Keep personal values and raw evidence outside Git and chat; publish structural
 conclusions only.
 
 | Checklist area | Required evidence |
 | --- | --- |
-| Search and history | Accepted page-size boundary; private count and oldest-date validation; type keys and activity-types access |
-| Activity metadata | Search/details field presence recorded above; known-race behavior, edit-marker semantics, units and optional values still need verification |
+| Search and history | Two requests using `limit=20` succeeded with disjoint IDs; limited historical sample and activity-types response were nonempty. Maximum, exact page lengths, complete history and type-key selection remain unverified |
+| Activity metadata | Known-race details match `race`; update marker is an ISO datetime string. Search-side race value, edit-marker semantics, units and optional values remain unverified |
 | Download | All four local notebook inspections completed; ZIP layout/member counts and approximate file-size range were not projected and remain unverified |
-| Wellness | Core one-day shapes/field presence recorded above; range caps/history, optional values, broader HRV availability and VO2 max result remain pending |
-| Zones | Response structure and per-sport settings; actual zone/HR values stay private |
+| Wellness | Core one-day shapes confirmed; HRV is null for the selected day and VO2 endpoint returns a nonempty array. Range caps/history, optional values, broader HRV availability and VO2 field mapping remain pending |
+| Zones | Nonempty array with a string `sport` field; other fields were omitted by the allowlist. Zone/profile mapping and per-sport semantics remain pending; actual values stay private |
 | FIT messages | Four owner-run projections received; common fields/groups and variable timestamp intervals recorded above; watch recording setting unverified |
 | FIT sensors | Protocol aliases checked synthetically and owner armband BLE `heart_rate` projection confirmed; exact source/model identity and HR-sample provenance remain unresolved |
 | FIT timing and units | Cadence scaling, elevation source/precision, lap and pause events, and offset handling |
-| HTTP behavior | Status/structure observations and any naturally encountered rate-limit headers under paced discovery |
-| Token timing | Locally checked lifetime only; never publish tokens, payloads or exact expiry |
+| HTTP behavior | All ten helper-paced probes succeeded; no HTTP error was reported. Live error formats and rate-limit/header behavior remain unobserved, not synthetically established |
+| Token timing | `exp` and `iat` present; unverified claims yield a 1-48-hour lifetime band. Exact lifetime, token/cache reuse and refresh behavior are not established by this report |
 | Terms | Owner confirms terms, private-folder permissions and private expiry-date configuration; no copied terms or dates; no external reminder required |
 | SDK feasibility | Terms approved, synthetic checks and strict notebook/harness typing pass; four local structural inspections complete; real-file timing/units remain pending |
 
@@ -453,10 +458,10 @@ provoke a change marker.
 | Armband device category | Complete: owner supplied the corrected BLE `heart_rate` projection | No further sensor-output rerun needed; exact identity/provenance remains unverified |
 | Recording setting | Check the watch's recording configuration; distinguish the current setting from historical evidence | `smart`, `every_second` or `unknown`, and whether historical applicability is known |
 | Cadence/elevation/timing | Privately compare FIT fields with the activity UI and inspect lap/timer/local-time relationships | Confirmed conversion/relationship or `unverified`; no measurements, timestamps or offsets |
-| Known race and edit marker | Inspect the saved known-race details and any naturally observed before/after edit evidence | Event-type key, JSON kind/format of `lastUpdateDate`, and a yes/no/unverified change conclusion; no IDs, titles or timestamp values |
-| Search/history | Validate container shape, paging and required history coverage in a separately agreed small request batch | Shape, accepted page-size setting and coverage yes/no; no counts, IDs or activity dates; leave maximum unverified unless established |
-| Wellness/zones/VO2 max | Inspect existing responses first; agree any remaining endpoint/range checks before requests | Container/field names, null/empty/error category, cap/boundary conclusion and units; no daily values, zones or dates |
-| Token/error behavior | Inspect the protected cache locally and only naturally encountered errors | Timing-claim presence, approximate lifetime and sanitized status/shape conclusions; never tokens, claims payloads, exact expiry or response bodies |
+| Known race and edit marker | Details `race` comparison and ISO datetime format are confirmed; inspect existing search evidence and any naturally observed edit evidence only | Search-side race comparison and a yes/no/unverified change conclusion; no IDs, titles or timestamp values |
+| Search/history | Array shape, disjoint page IDs and a nonempty limited historical sample are confirmed; full coverage and type selection remain pending | Coverage/type-selection conclusions only; no counts, IDs or dates. No additional request batch is approved here |
+| Wellness/zones/VO2 max | Access and response categories are confirmed; inspect existing private responses for omitted schema information first | Structural/units conclusions only. Empty projected `fields` does not mean the underlying object is empty |
+| Token/error behavior | Timing-claim presence and broad lifetime band are recorded; no live errors were reported | Only naturally encountered sanitized status/shape conclusions; never tokens, claims payloads, exact expiry or response bodies |
 
 Unknowns stay explicit. Completing the device-alias check alone does not close
 Phase 1 or accept either ADR. Phase 2 ingestion and Phase 3 HR-source
@@ -464,10 +469,11 @@ classification remain separate implementation approvals.
 
 ### Approved bounded API discovery helper (owner-run)
 
-The helper consolidates the next agreed batch; it has not supplied live evidence
-or completed Phase 1. Run this from the repository root in your own PowerShell
-terminal. It loads the existing `.env`; no additional settings, kernel changes
-or manual environment-variable exports are needed.
+The helper consolidates the agreed batch; the owner has now supplied its
+structural report below. This does not complete Phase 1 or request a rerun.
+For reference, the owner-run command below uses the repository root and a
+PowerShell terminal. It loads the existing `.env`; no additional settings,
+kernel changes or manual environment-variable exports are needed.
 
 ```powershell
 & 'C:\Python314\python.exe' -m uv run --isolated --no-project --env-file .env --python 3.14 --with garmin-connect-personal-api-python==1.0.0 python notebooks\api_discovery.py --live
@@ -526,6 +532,42 @@ behavior or wider HRV availability. Existing FIT timing/unit gates and Proposed
 ADRs are unchanged. The separate `check_api_discovery.py` harness uses only
 synthetic responses with the real client's network transport mocked, and CI
 runs it on Windows and Linux without loading `.env`.
+
+### Owner-reported bounded API batch results
+
+The owner supplied the helper's allowlisted report, not raw responses, private
+inputs or credential files. It reports `completed=true`,
+`has_http_errors=false` and successful results for all ten probes. No Garmin
+requests were made by the assistant to review or record this evidence.
+
+| Area | Observed result and limit |
+| --- | --- |
+| Activity types | Nonempty array of objects. The first item's projected `fields` is empty with `other_fields_omitted=true`; endpoint access is verified, not taxonomy field names or values |
+| Search pages | Both are nonempty arrays; their privately compared ID sets are disjoint. Requests using `start=0/20` and `limit=20` succeeded; exact returned lengths, maximum size and stable ordering are not established |
+| Historical sample | The fixed, limited historical query returned a nonempty array; this does not verify complete history, totals or the earliest activity |
+| Search classification | `activityType` exposes numeric `typeId`/`parentTypeId` and string `typeKey`; `eventType` exposes numeric `typeId` and string `typeKey`. Values were not projected |
+| Known-race details | `event_key_is_race=true`; `eventTypeDTO.typeKey` matches `race`. This does not verify the search-side event value |
+| Change marker | `metadataDTO.lastUpdateDate` is a string parsed as an ISO datetime; actual edit behavior remains `not_tested`, and timezone/precision guarantees are not established |
+| Daily summaries | Object with a nonempty `data` array. Projected heart-rate, Body Battery and stress fields are numeric; `movement.steps` is an object at the depth limit, not established here as a scalar count |
+| Sleep | Nonempty array; projected duration/stage fields have numeric kinds. This does not establish units from names alone or optional sleep-score coverage |
+| HRV | Successful response with JSON `null` for the selected day. It does not establish device support or absence of data on other days |
+| VO2 max | Nonempty array of objects, not 404. First-item fields were all omitted by the allowlist; no particular VO2 metric field, value or unit is verified |
+| Zones | Nonempty array; first item has a string `sport` field and omitted fields. Zone boundaries, profile HR fields and per-sport meaning remain unresolved |
+| Token timing | `exp` and `iat` are present; their unverified claims yield `one_to_48_hours`. This is not exact 24-hour timing, signature validation, key expiration or evidence of a fresh token exchange |
+| Errors and pacing | All probes succeeded through the helper's paced path. No live 401/403/404/429 or `Retry-After` behavior was observed in this batch |
+
+Search/details metric-name differences are reconfirmed, including search
+`averageRunningCadenceInStepsPerMinute`/`avgStrideLength` versus details
+`averageRunCadence`/`strideLength`. Details `timeZoneUnitDTO.timeZone` is a string;
+deriving the local offset remains unverified.
+
+The report uses only allowlisted keys, the first array item and limited depth.
+An empty projected field map with omitted fields is a projection limitation,
+not an empty source object or evidence of absent metrics. Do not respond by
+requesting raw files, echoing unknown dynamic keys or rerunning the live batch.
+Any further local projection or request work requires a separately agreed plan.
+The remaining checklist and both Proposed ADRs stay open; no ingestion is
+authorized by this report.
 
 ### Windows private-folder setup (owner-run)
 

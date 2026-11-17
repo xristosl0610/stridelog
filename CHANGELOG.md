@@ -29,6 +29,9 @@ Versioning. No release has been published.
 - Confirmed, owner-run API discovery helper with `.env` loading, protected local
   response storage, allowlisted structural reporting and offline transport/privacy
   checks; no ingestion or application dependencies.
+- Owner-reported successful ten-probe API batch, disjoint search pages,
+  known-race details and marker format, endpoint response categories and broad
+  token-timing band, with projection limits and remaining Phase 1 gates explicit.
 
 ### Fixed
 
