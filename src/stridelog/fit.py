@@ -94,11 +94,11 @@ class Sensor:
 
     @property
     def is_external_hr(self) -> bool:
-        return self.source_type in {
-            "ant",
-            "antplus",
-            "bluetooth_low_energy",
-        } and self.device_type in {"heart_rate", "120", "1"}
+        return (
+            self.source_type in {"ant", "antplus"} and self.device_type in {"heart_rate", "120"}
+        ) or (
+            self.source_type == "bluetooth_low_energy" and self.device_type in {"heart_rate", "1"}
+        )
 
 
 @dataclass(frozen=True)
@@ -161,7 +161,7 @@ def _sensor(message: Message) -> Sensor:
         text(message, "source_type"),
         kind,
         text(message, "manufacturer"),
-        text(message, "product") or text(message, "garmin_product"),
+        text(message, "garmin_product") or text(message, "product"),
         text(message, "product_name"),
     )
 
@@ -244,7 +244,10 @@ def classify_hr(
         if not sensor.is_external_hr:
             continue
         model = (sensor.product_name or "").casefold()
-        if model in {"hrm-pro", "hrm-pro plus", "hrm-dual", "hrm-run", "hrm-tri"}:
+        if model in {"hrm-pro", "hrm-pro plus", "hrm-dual", "hrm-run", "hrm-tri"} or (
+            sensor.manufacturer == "garmin"
+            and sensor.product in {"hrm_pro", "hrm_pro_plus", "hrm_dual", "hrm_run", "hrm_tri"}
+        ):
             known.add("chest_strap")
         elif model == "coros heart rate monitor":
             known.add("armband")

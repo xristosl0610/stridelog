@@ -51,6 +51,8 @@ Do not treat absence of a parsed activity as permission to remove its annotation
 wear location: generic BLE and ANT+ HR remain `unknown`. A single recognized
 external model can support `chest_strap` or `armband` with origin `fit`, which
 means model evidence in the file, not proof of every sample's physical source.
+Named Garmin HRM product enums from the SDK are recognized alongside explicit
+product names; numeric model IDs are not independently guessed.
 Conflicting model evidence remains unknown and blocks the date fallback.
 Missing external metadata never establishes `wrist`.
 
@@ -58,3 +60,43 @@ The optional inclusive local-date rule yields `armband` with origin
 `user_date_rule` only when HR exists and FIT cannot establish the source.
 It never overrides contrary or conflicting recognized-model evidence. Exact
 identity and real-watch normalization remain subject to owner spot checks.
+
+## Import and quality contract
+
+`rebuild` verifies manifest paths, sizes and checksums, and uses current activity
+and wellness JSON, not superseded content versions. All zone versions become
+content-addressed snapshots. A single transaction replaces measurements and
+quality findings; operational tables and annotations are never cleared. Original
+ZIPs remain immutable. Invalid/unsupported FIT produces a byte-identical quarantine
+copy rather than moving the archived original. Storage/SQL failures and interruption
+roll back the measurement transaction. Per-input schema/parse failures are stored
+as explicit findings and valid inputs still import; the CLI then exits nonzero.
+
+The private quality report lists every imported or rejected activity. The rebuild
+report records elapsed time and a deterministic digest of ordered rows in every
+rebuildable table, excluding operational history, annotations and report timing.
+Repeat comparisons therefore check actual normalized query results.
+
+Mappings use the observed daily `data` array, sleep array, null/empty HRV and
+per-sport zones array. A one-day response containing multiple rows or a conflicting
+calendar date is rejected rather than arbitrarily selecting a row. Unknown populated
+HRV schemas are explicit failures; no guessed HRV field or sleep-score mapping is
+introduced. Ambiguous cadence/stride fields in Garmin JSON are not converted;
+the normalized cadence comes from FIT. Allowlisted Garmin metrics retain their API
+field names in `garmin_metrics`, separate from normalized FIT totals.
+
+Quality flags are screening heuristics, not medical judgments, and never remove
+or repair samples automatically:
+
+- HR outside 30-240 bpm; missing/zero HR; changes over 15 bpm/s within five seconds.
+- Identical HR for at least 60 seconds with gaps no longer than five seconds.
+- Possible cadence lock: HR within 3 bpm of cadence for at least 60 seconds and
+  12 successive comparisons, with gaps no longer than five seconds.
+- GPS jumps implying over 15 m/s, non-increasing record times, and gaps over 30 s.
+- FIT/API distance mismatch over max(10 m, 2%); timer/elapsed mismatch over
+  max(2 s, 2%); complete lap-distance sums compared with FIT total distance.
+- Missing sensor metadata, unknown HR source and missing paired start offset.
+
+Flags can be false positives, especially during pauses, intentional steady HR
+or sparse recording. Review locally; no diagnostic or training recommendation
+is inferred.

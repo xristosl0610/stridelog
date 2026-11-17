@@ -5,8 +5,9 @@ rebuildable local archive, transparent running metrics and an interactive web ap
 
 **Status:** Phase 2 core raw ingestion implemented: `.env` settings, migrations,
 `doctor`, `status` and resumable `sync`; the owner confirmed full and repeat sync
-completion. Phase 3 typed storage and FIT parsing are in progress. Rebuild commands,
-analytics, `import-fit` and the web app are not available yet. See the [plan](docs/PLAN.md).
+completion. Phase 3 typed storage, offline `rebuild` and `dq-report` are implemented;
+real-archive parser acceptance remains owner-run. Analytics, `import-fit` and the
+web app are not available yet. See the [plan](docs/PLAN.md).
 
 ## Development quickstart
 
@@ -54,7 +55,8 @@ The default data folder is `~/.stridelog`; `STRIDELOG_DATA_DIR` must resolve
 outside the checkout. Restrict its permissions and those of `.env` yourself,
 especially Windows ACLs; directory creation mode alone does not establish a
 Windows ACL. Diagnostics never print the key, private dates or storage paths.
-The optional armband date is validated now but classification remains Phase 3.
+The optional armband date is applied during rebuild with explicit user-assumed
+provenance, never as proof of sensor identity.
 
 ## Raw sync
 
@@ -91,6 +93,53 @@ inspect and repair locally; never share files or raw errors. See the
 [archive and recovery contract](docs/architecture.md#raw-archive-policy).
 Run an initial sync, a repeat sync and an interruption/resume locally before
 Phase 2 acceptance. No assistant-run account ingestion is claimed.
+
+## Offline typed rebuild
+
+After sync, rebuild the measurement tables without any Garmin requests:
+
+```powershell
+uv run stridelog rebuild
+uv run stridelog rebuild
+uv run stridelog dq-report
+```
+
+`rebuild` upgrades the local schema automatically. It replaces only rebuildable
+measurement/quality tables in a transaction; raw archives, operational history
+and user annotations remain untouched. Errors or Ctrl+C before commit roll back
+the measurement replacement. Do not run sync between the two acceptance rebuilds.
+The second should say `Matches previous rebuild: yes`, comparing all rebuilt
+query results, not just row counts. Every archived activity is imported or listed
+as failed with a fixed reason code. Any failed activity/document makes `rebuild`
+exit nonzero, even though other valid inputs are imported.
+
+Private reports are under `reports` in the configured data directory:
+
+- `rebuild.json`: counts, elapsed seconds, result fingerprint and repeat comparison.
+- `data-quality.json`: imported activities, flags and rejected inputs/reasons.
+
+`dq-report` refreshes stored findings; it does not reparse or download data.
+Inspect reports locally, not in Git or chat. Invalid/unsupported FIT inputs get
+a checksum-named ZIP copy in `quarantine`; immutable originals are never moved,
+overwritten or extracted. Each ZIP must contain exactly one FIT member, at most
+128 MiB uncompressed. Missing/checksum-mismatched raw files are explicitly reported.
+The archive must contain at least one activity; an empty/uninitialized archive is
+an error rather than an apparently successful empty rebuild.
+
+HR labels distinguish recognized model evidence, date assumptions and unknown
+sources. BLE/ANT+ categories alone do not identify armband/chest wear; missing
+external metadata does not establish wrist HR. See the [data model](docs/data-model.md)
+for units, timestamp handling, mapping limits and quality-screen thresholds.
+
+The observed HRV response is null; it stays null. Populated HRV schemas and other
+unsupported JSON shapes are reported, not guessed. Sleep score remains null
+because no verified field was observed. Current zones are not applied retroactively.
+
+Phase 3 acceptance still needs two completed local rebuilds, ten private spot
+checks (distance, timer/elapsed duration, cadence, laps, local date/offset and HR
+evidence), and recorded runtime. The target is under five minutes; no account
+benchmark is claimed. Release v0.1.0 and final FIT ADR acceptance wait for those
+checks. Share only sanitized success/failure, not reports or measurements.
 
 ## Privacy
 

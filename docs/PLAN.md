@@ -1004,31 +1004,35 @@ No additional discovery-helper batch is required.
 
 Tasks:
 
-- [ ] 3.1 Core and user-entered tables (Section 6) as SQLAlchemy models, with Alembic migrations.
-- [ ] 3.2 FIT parser that turns each file into typed objects with `garmin-fit-sdk` (activity, laps, samples, sensors, timer events):
+- [x] 3.1 Core and user-entered tables (Section 6) as SQLAlchemy models, with Alembic migrations. Analytics tables remain Phase 4.
+- [x] 3.2 FIT parser that turns each file into typed objects with `garmin-fit-sdk` (activity, laps, samples, sensors, timer events):
   - SI units, UTC times plus the local offset, and cadence in steps per minute;
   - prefer the higher-precision `enhanced_*` fields;
   - handle runs without GPS (treadmill) and pauses;
-  - move corrupt files aside and report them.
-- [ ] 3.3 Heart-rate source classification with provenance: chest strap, armband, wrist, none or unknown. Apply the approved inclusive local-date armband fallback only when HR exists and FIT cannot establish the source; label it user-assumed and never overwrite clear contrary evidence. Test the cutoff boundary, missing/ambiguous metadata, contradictory source evidence and runs without HR. Do not assume missing external-sensor metadata means wrist.
-- [ ] 3.4 JSON mappers for:
+  - quarantine a byte-identical copy of corrupt/unsupported FIT ZIPs and report them; preserve immutable originals rather than moving them.
+- [x] 3.3 Heart-rate source classification with provenance: chest strap, armband, wrist, none or unknown. Apply the approved inclusive local-date armband fallback only when HR exists and FIT cannot establish the source; label it user-assumed and never overwrite clear contrary evidence. Test the cutoff boundary, missing/ambiguous metadata, contradictory source evidence and runs without HR. Do not assume missing external-sensor metadata means wrist.
+- [x] 3.4 JSON mappers for observed shapes (unsupported populated HRV/other unknown schemas are explicit report failures, not guessed mappings):
   - activity summaries and details: name, event type (turned into the race flag), and any Garmin metrics present;
   - wellness datasets;
   - heart-rate zone snapshots.
-- [ ] 3.5 Importer that updates existing rows instead of duplicating them and records where each row came from. Add `stridelog rebuild`, which leaves user-entered tables untouched.
-- [ ] 3.6 Data-quality checks and `stridelog dq-report`:
+- [x] 3.5 Importer that transactionally replaces rebuildable rows without duplicates and records where each row came from. Add `stridelog rebuild`, which leaves user-entered tables untouched.
+- [x] 3.6 Data-quality checks and `stridelog dq-report`:
   - heart rate: spikes, flat lines, dropouts, and readings that follow cadence instead of your heart;
   - GPS jumps that imply impossible speeds;
   - FIT totals compared with Garmin's summary;
   - missing sensors.
-- [ ] 3.7 Synthetic data generator using the FIT SDK Encoder, used by the tests now and by `stridelog demo` later.
-- [ ] 3.8 Tests:
+- [x] 3.7 Synthetic data generator using the FIT SDK Encoder, used by the tests now and by `stridelog demo` later.
+- [x] 3.8 Tests:
   - comparing parser output with saved expected results for synthetic files: no GPS, pause and resume, heart-rate dropout, multiple laps, a daylight-saving change;
   - a migration test.
 
 **Deliverable**: a database with every run and wellness day, and a data-quality report that we review together. Tag v0.1.0.
 
 **Acceptance criteria**:
+
+Implementation and synthetic checks are complete; the following real-archive
+checks remain owner-run and unverified. ADR-0004 stays Proposed and v0.1.0 is
+not tagged until final parser/spot-check acceptance.
 
 - Rebuilding from the raw archive twice gives identical query results.
 - Every run is imported, or listed in the report with a reason.

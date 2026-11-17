@@ -63,9 +63,22 @@ class RawStore:
         manifest = self.session.get(RawFile, relative)
         if manifest is None or not target.is_file():
             return False
-        if hashlib.sha256(target.read_bytes()).hexdigest() != manifest.sha256:
-            raise StridelogError("Archive checksum mismatch; repair local storage before syncing.")
+        self.read_verified(relative)
         return True
+
+    def read_verified(self, relative: str) -> bytes:
+        """Read a contained manifest entry once, verifying both length and digest."""
+        target = self._target(relative)
+        manifest = self.session.get(RawFile, relative)
+        if manifest is None or not target.is_file():
+            raise StridelogError("Required archived file is missing.")
+        payload = target.read_bytes()
+        if (
+            len(payload) != manifest.size_bytes
+            or hashlib.sha256(payload).hexdigest() != manifest.sha256
+        ):
+            raise StridelogError("Archive checksum mismatch; repair local storage before syncing.")
+        return payload
 
     def write_json(self, relative: str, payload: JsonValue, dataset: str, source_id: str) -> bool:
         """Preserve each unique payload before atomically updating its current copy."""
