@@ -1,0 +1,18 @@
+name: Bug report
+description: Report a reproducible problem without personal data.
+title: "fix: "
+body:
+  - type: markdown
+    attributes:
+      value: Never attach health or location data, FIT files, tokens, or unredacted logs.
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include commands, expected behavior, actual behavior and software versions.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Synthetic example or redacted error

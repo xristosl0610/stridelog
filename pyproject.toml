@@ -1,0 +1,53 @@
+[project]
+name = "stridelog"
+version = "0.0.0"
+description = "Local-first running analytics for Garmin data"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.14"
+dependencies = ["typer>=0.29.1,<0.30"]
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.170.15",
+    "pyright>=1.1.414",
+    "pytest>=9.2.0",
+    "pytest-cov>=7",
+    "ruff==0.17.5",
+]
+notebooks = ["ipykernel>=7", "plotly>=7.1.0"]
+
+[project.scripts]
+stridelog = "stridelog.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.13.9,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "S", "ANN", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S603"]
+
+[tool.pyright]
+include = ["src", "tests", "scripts"]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-config --strict-markers --cov=stridelog --cov-report=term-missing --cov-fail-under=85"
+
+[tool.coverage.run]
+branch = true
+source = ["stridelog"]
+
+[tool.coverage.report]
+show_missing = true

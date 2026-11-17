@@ -1,0 +1,42 @@
+# Python and tools
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.egg-info/
+build/
+dist/
+.ipynb_checkpoints/
+
+# Personal data and credentials, including SQLite sidecars
+*.fit
+*.FIT
+*.zip
+*.sqlite*
+*.db
+*.db-wal
+*.db-shm
+*.gpx
+*.tcx
+.env*
+!.env.example
+**/raw/
+**/data/
+**/exports/
+.stridelog/
+connect-personal-api-key
+connect-personal-api-token
+
+# Local tooling, editors and operating systems
+.tools/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+node_modules/

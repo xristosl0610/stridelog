@@ -1,0 +1,16 @@
+name: Feature request
+description: Propose a scoped improvement linked to the roadmap.
+title: "feat: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and proposed outcome
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria and roadmap phase
+    validations:
+      required: true

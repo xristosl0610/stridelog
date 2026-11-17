@@ -1,0 +1,36 @@
+minimum_pre_commit_version: "4.0.0"
+default_language_version:
+  python: python3
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: ef6cf06c079dd6b299dfc720b0f14400c9d168e1  # v0.17.5
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b  # v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: detect-private-key
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 9c72c5f9f05200fdc06e3f1b16e9aaa89fbe9f75  # v8.24.2
+    hooks:
+      - id: gitleaks-system
+        pass_filenames: false
+        require_serial: true
+  - repo: https://github.com/kynan/nbstripout
+    rev: 7324e7aabccc1d1a9984dbe4dedbde8bd022a504  # 0.8.1
+    hooks:
+      - id: nbstripout
+  - repo: local
+    hooks:
+      - id: reject-private-data
+        name: Reject personal data and credential files
+        entry: python scripts/check_private_files.py
+        language: python
+        types: [file]
