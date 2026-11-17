@@ -462,6 +462,71 @@ Unknowns stay explicit. Completing the device-alias check alone does not close
 Phase 1 or accept either ADR. Phase 2 ingestion and Phase 3 HR-source
 classification remain separate implementation approvals.
 
+### Approved bounded API discovery helper (owner-run)
+
+The helper consolidates the next agreed batch; it has not supplied live evidence
+or completed Phase 1. Run this from the repository root in your own PowerShell
+terminal. It loads the existing `.env`; no additional settings, kernel changes
+or manual environment-variable exports are needed.
+
+```powershell
+& 'C:\Python314\python.exe' -m uv run --isolated --no-project --env-file .env --python 3.14 --with garmin-connect-personal-api-python==1.0.0 python notebooks\api_discovery.py --live
+```
+
+Enter the existing protected discovery directory outside the repository, a
+private sample day in `YYYY-MM-DD` form, and a known-race activity's numeric ID.
+Obtain that ID privately from the activity's Garmin Connect URL; do not share
+the URL or ID. Choose a day with expected wellness data. The helper lists public
+request names and requires literal `RUN` before contacting Garmin. Without
+`--live`, it sends nothing. Folder containment is checked, but its ACL is not:
+continue using the protected directory verified during the setup below.
+
+The approved budget is at most ten GETs plus one token exchange if the protected
+cache needs refreshing. Starts are spaced at least one second apart, including
+authentication. Only the official HTTPS origin is allowed; redirects and retries
+are disabled.
+
+| Request name | Target and scope |
+| --- | --- |
+| `activity_types` | `/activity-service/activity/activityTypes/simple` |
+| `search_first`, `search_second` | Activity search, `start=0` and `start=20`, each with `limit=20` |
+| `history_sample` | Activity search, `start=0`, `limit=1`, January 2025 only (the public planned start month, not a completeness check) |
+| `race_details` | `/activity-service/activity/{private_id}` |
+| `daily_summary` | `/usersummary-service/v2/dailysummaries`, selected day only |
+| `sleep` | `/sleep-service/sleep/dailySleepSummariesByDate`, selected day only |
+| `hrv` | `/hrv-service/hrv/daily/{day}/{day}` |
+| `zones` | `/biometric-service/heartRateZones/v2` |
+| `vo2_max` | `/metrics-service/metrics/maxmet/daily/{day}/{day}` |
+
+Search uses `/activitylist-service/activities/search/activities`; summary and
+sleep pass equal `startDate`/`endDate`. The activity-types and VO2 paths were
+cross-checked against the official client's
+[upstream source at revision 979e6e9](https://github.com/garmin/connect-personal-api-python/blob/979e6e9fc58bcbf968611509b634ba734d6f8cdf/src/garmin_personal_api/client.py),
+not assumed to be convenience methods in released client 1.0.0.
+
+Successful parsed JSON responses go into a new, non-overwriting `api-check-*`
+subdirectory; these are not original HTTP bytes or headers. The bearer cache
+stays in the selected protected directory. Error bodies are not printed or
+saved. HTTP 401/403/429 stops the batch immediately; other HTTP failures are
+reported per probe and produce a nonzero exit. Transport, redirect, token and
+JSON parsing failures also stop with sanitized diagnostics.
+
+**Share only the final structural JSON**, not terminal inputs, raw files, cache,
+error bodies, keys or tokens. The projection includes only hardcoded field names
+and JSON kinds, takes only the first array item and limits nesting depth to four.
+Unknown field names and all response scalar values are omitted. Paging compares
+IDs privately and reports only disjoint/overlap/unavailable. Race metadata
+reports a comparison and timestamp format, not values. Token timing reports
+claim presence and a broad lifetime band from unverified claims; it does not
+validate a JWT signature or disclose its payload or exact expiry.
+
+Empty/null/failed probes remain distinct. A successful batch does not establish
+page/range maxima, complete history, units, optional-field coverage, edit-marker
+behavior or wider HRV availability. Existing FIT timing/unit gates and Proposed
+ADRs are unchanged. The separate `check_api_discovery.py` harness uses only
+synthetic responses with the real client's network transport mocked, and CI
+runs it on Windows and Linux without loading `.env`.
+
 ### Windows private-folder setup (owner-run)
 
 Run this in your own PowerShell terminal, not through an assistant tool. It
