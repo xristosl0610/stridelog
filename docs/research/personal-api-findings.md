@@ -92,6 +92,66 @@ The released daily-summary wrapper documents an object containing a `data`
 array, even for one day. Confirm this against a private response before writing
 models; other wrapper return annotations allow arbitrary JSON.
 
+## Owner-reported activity field inspection
+
+The owner inspected a saved search item and its corresponding details response
+locally and shared field names only. This is one sample, not a complete schema
+or evidence that any particular value is populated. The top-level search
+container label was not included in the report.
+
+| Area | Observed field names / structure |
+| --- | --- |
+| Search metrics | `distance`, `duration`, `elapsedDuration`, `movingDuration`, `averageHR`, `maxHR`, `averageSpeed`, `elevationGain`, `elevationLoss`, `elevationCorrected` |
+| Search timing | `startTimeGMT`, `startTimeLocal`, `beginTimestamp`, `endTimeGMT`; no obvious last-update field appeared |
+| Search classification | `activityType`, `eventType`; nested schemas and race semantics not yet checked |
+| Details containers | `summaryDTO`, `activityTypeDTO`, `eventTypeDTO`, `metadataDTO`, `timeZoneUnitDTO` |
+| Activity type details | `activityTypeDTO` has `typeId`, `parentTypeId`, `typeKey` |
+| Event type details | `eventTypeDTO` has `typeId`, `typeKey`; a known race still needs private validation |
+| Additional details metrics | `minHR`, `averageMovingSpeed`, `directWorkoutFeel`, `directWorkoutRpe`; presence does not imply non-null values |
+| Different metric names | Search uses `averageRunningCadenceInStepsPerMinute`, `maxRunningCadenceInStepsPerMinute`, `avgStrideLength`; details use `averageRunCadence`, `maxRunCadence`, `strideLength` |
+| Details metadata | `lastUpdateDate`, `uploadedDate`, `elevationCorrected`, `lapCount`, `sensors` are present |
+| Time-zone container | `timeZoneUnitDTO` has `timeZone`; its value/type and offset derivation remain unverified |
+
+Consequences for the next implementation plan:
+
+- Keep details retrieval in scope. Search and details are not interchangeable
+  schemas; units and nullability must be verified before mapping similarly named
+  metrics.
+- `metadataDTO.lastUpdateDate` is a candidate edit marker, found only in the
+  details sample. Presence alone does not establish its format or whether every
+  relevant edit updates it. Start/end/upload times are not substitutes.
+- Do not assume summary comparison detects details-only changes. Phase 2 needs
+  an explicit detail-refresh/reconciliation policy, including the limits of a
+  recent-activity lookback for detecting edits to older activities.
+- Search also exposes owner/profile and location fields. Keep them out of logs,
+  issue evidence and synthetic fixtures; the owner shared no values.
+
+## Owner-reported wellness field inspection
+
+The owner requested one privately selected date for daily summaries, sleep
+summaries and HRV summaries and shared shapes/field names only.
+
+| Dataset | Observed structure |
+| --- | --- |
+| Daily summaries | Object with a `data` collection; inspected item has `heartRate`, `bodyBattery`, `stress`, `movement`, `intensityMinutes` and other containers |
+| Resting heart rate | `heartRate.restingValue`, alongside `minValue` and `maxValue` |
+| Body Battery | `chargedValue`, `drainedValue`, `latestValue`, `minValue`, `maxValue`, `featureVersion` |
+| Stress | `avgLevel`, `maxLevel`, duration/proportion fields and `qualifier`; duration keys explicitly include `InMillis` |
+| Movement | `steps`, `floorsAscended`, `floorsDescended`, `pushes` |
+| Intensity minutes | `goal`, `moderate`, `vigorous` |
+| Sleep summaries | Array; inspected item has `sleepTimeSeconds`, `deepSleepSeconds`, `lightSleepSeconds`, `remSleepSeconds`, `awakeSleepSeconds`, `napTimeSeconds` and GMT/local start/end timestamps |
+| HRV summaries | Successful request with JSON `null` for the one tested day |
+
+These are field-presence observations, not measurements, non-null guarantees or
+complete endpoint schemas. No sleep-score field appeared in this inspected
+sleep-summary item. A single HRV `null` does not prove that the endpoint or device
+lacks HRV support; history and response distinctions still need checking.
+
+Daily summaries expose the core containers for resting HR, steps, Body Battery
+and stress, so dedicated Body Battery/stress/steps requests are deferred unless
+coverage or field validation shows a need. Actual field units, optional values,
+date boundaries, range caps and earliest available data remain unverified.
+
 ## Credential, cache and error handling
 
 Inspection of released client 1.0.0 establishes:
@@ -127,37 +187,58 @@ rate limiting or invalidate a working key just to fill the checklist.
 
 The public package metadata declares Python >=3.6 and
 `LicenseRef-FIT-Protocol-License-Agreement`, not MIT or Apache-2.0.
-The upstream package exports Decoder, Stream and Encoder and declares
-`py.typed` / stub package data. These declarations alone do not prove complete
-strict typing, successful synthetic encoding or Python 3.14 runtime behavior.
+The installed release exports Decoder, Stream and Encoder and includes
+`py.typed` and `.pyi` files. Stub inspection confirms typed decoder output, but
+encoder inputs and several callbacks use dictionaries containing `Any`.
+Strict application boundaries still need validation; published stubs are not
+proof that every operation is strictly typed.
 
 Review the [FIT Protocol License](https://github.com/garmin/fit-python-sdk/blob/d413e1ccef7b56e59dbd84eb547fa73b5caee282/LICENSE.txt)
 before installing/executing the SDK. It contains use, redistribution and
 benchmarking restrictions. The project's intended approach remains normal
 dependency installation without vendoring or bundling; this is not a legal
-compatibility determination. No SDK installation, execution, parser comparison
-or sample inspection was performed in this check.
+compatibility determination.
 
 The owner subsequently confirmed reviewing the Personal API and FIT SDK terms
 and approved the planned local use. This records the owner's confirmation, not
 an independent legal assessment. Private discovery will use owner-run commands;
 only structural conclusions will be shared.
 
+After that approval, an isolated SDK 21.221.0 environment passed a synthetic
+in-memory encode/decode probe on Python 3.14.2. The probe checked two record
+timestamps, supplied distance/speed/elevation and HR/cadence values, one lap and
+one session, and rejection of a deliberately corrupted CRC. No real files,
+credentials or Garmin requests were used; no project dependencies changed.
+This demonstrates basic synthetic encoding/decoding, not real-watch sensor
+coverage, physical cadence conversion or parser completeness.
+
+The first probe exposed an important stream-state detail: calling
+`check_integrity()` and then `read()` on the same stream returned no record group
+without decode errors. A focused reproduction showed `is_fit()` followed by
+`read()` retained records, whereas `check_integrity()` followed by `read()` did
+not. Recreating the stream for decoding made the full round-trip pass.
+The future parser must rewind/recreate the stream after an integrity scan,
+rather than mistake an exhausted stream for a valid empty activity.
+
+Strict Pyright evaluation of SDK integration and the four representative real
+files remain pending. No parser performance comparison was performed.
+
 ## Private verification remaining
 
 The owner confirms terms review, private-folder permission setup and a
 successful one-activity search command with released client 1.0.0. This verifies
-the basic authentication/request path only: response contents, pagination,
-history, other endpoints and token timing remain unverified. Keep personal
-values and raw evidence outside Git and chat; publish structural conclusions
-only.
+the basic authentication/request path. Search/details and one-day wellness field
+names have since been inspected locally and are recorded above; values,
+pagination, history, remaining endpoints and token timing remain unverified.
+Keep personal values and raw evidence outside Git and chat; publish structural
+conclusions only.
 
 | Checklist area | Required evidence |
 | --- | --- |
 | Search and history | Accepted page-size boundary; private count and oldest-date validation; type keys and activity-types access |
-| Activity metadata | Race flag in search/details, update timestamp, summary metrics and whether details are necessary |
+| Activity metadata | Search/details field presence recorded above; known-race behavior, edit-marker semantics, units and optional values still need verification |
 | Download | ZIP member structure, FIT member count and approximate file-size range without private filenames |
-| Wellness | Observed range caps/history, available fields, HRV presence and VO2 max result |
+| Wellness | Core one-day shapes/field presence recorded above; range caps/history, optional values, broader HRV availability and VO2 max result remain pending |
 | Zones | Response structure and per-sport settings; actual zone/HR values stay private |
 | FIT messages | Four representative samples; message/field presence and sampling-interval conclusion |
 | FIT sensors | Classification evidence without serial numbers; explicitly note absent or ambiguous sensor metadata |
@@ -165,7 +246,7 @@ only.
 | HTTP behavior | Status/structure observations and any naturally encountered rate-limit headers under paced discovery |
 | Token timing | Locally checked lifetime only; never publish tokens, payloads or exact expiry |
 | Terms | Owner confirms review and approval of planned local use and private-folder permission setup; no copied terms. Private expiry reminder still needs confirmation |
-| SDK feasibility | Terms approved; strict-typing evaluation and a synthetic encoding/decoding check remain pending |
+| SDK feasibility | Terms approved and synthetic round-trip passed; stub limitations recorded; strict integration typing and real-file evaluation remain pending |
 
 ### Next local session
 

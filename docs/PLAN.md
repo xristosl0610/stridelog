@@ -316,6 +316,7 @@ flowchart LR
 3. Activities: list from 7 days before the last synced activity date up to today, page by page, and keep only running activity types (a configurable list).
    - New activity: save the summary JSON, then download the details JSON and the original ZIP. If Phase 1 shows the summary already contains everything we need, the details request is dropped.
    - Known activity whose summary or last-update timestamp changed (renamed, race flag set): refresh the JSON only. The FIT file never changes.
+   - Phase 1 observation: the inspected search item has no obvious last-update field; `metadataDTO.lastUpdateDate` is present in details only. Do not equate start/end/upload timestamps with edits. Details remain in scope, and the Phase 2 implementation plan must specify detail refresh/reconciliation and the limitations of detecting older edits with a recent-activity lookback.
 4. Wellness: for each dataset, request from 3 days before the last synced date up to today, in chunks no larger than that endpoint's date-range cap, and save each response.
 5. Write every file atomically (to a temporary file, then rename) and record it in the manifest with its SHA-256 checksum.
 6. Move each dataset's sync position forward only after its files are safely written, so an interrupted sync resumes where it stopped.
@@ -393,7 +394,7 @@ The data folder is deliberately outside the repository, so personal data cannot 
 ### 5.7 Configuration and secrets
 
 - Application settings come from `STRIDELOG_*` environment variables or a `.env` file (ignored by Git) and are checked at startup. `.env.example` lists the setting names without values.
-- The Personal API key follows the conventions of Garmin's client: either the `GARMIN_PERSONAL_API_KEY` environment variable or the key file `%USERPROFILE%\.config\garmin\connect-personal-api-key`. The bearer token is cached in the same folder. Both are outside the repository and never logged.
+- The Personal API key follows Garmin's client conventions: `GARMIN_PERSONAL_API_KEY` from the process environment or an explicitly loaded `.env`, or the key file `%USERPROFILE%\.config\garmin\connect-personal-api-key`. The owner selected the ignored local `.env`; restrict its permissions and never force-add it. The bearer cache remains outside the repository, using the protected discovery folder during Phase 1. Neither credential is ever logged.
 - `STRIDELOG_API_KEY_EXPIRES_ON` lets `stridelog doctor` warn you before the key expires.
 - Optional later improvement: store the key in Windows Credential Manager (backlog).
 
@@ -833,10 +834,21 @@ and upstream interfaces. The owner confirmed reviewing the Personal API and
 FIT SDK terms and approved planned local use. The owner reports successful
 private-folder permission setup and one authenticated activity-search command
 using an ignored local `.env`. The assistant has not read credentials or raw
-responses, and no SDK execution or real FIT inspection has occurred.
+responses. An isolated synthetic FIT SDK probe has since passed; no real FIT
+inspection has occurred.
 Private verification uses owner-run commands, with only structural conclusions
-shared. The expiry reminder, response structures, representative samples and
+shared. The expiry reminder, remaining response structures, representative samples and
 the remaining Section 13 checks are still pending; both ADRs remain proposed.
+The owner subsequently supplied search/details field names only: summary metric
+names differ, details expose a candidate `metadataDTO.lastUpdateDate`, and
+`timeZoneUnitDTO` contains `timeZone`. Values, units, edit-marker semantics,
+race behavior and remaining endpoint/FIT checks are not yet verified.
+One-day wellness inspection also confirmed daily-summary containers for resting
+HR, Body Battery, stress and steps; sleep-summary stage/duration field names;
+and a JSON `null` HRV response for that day only. No account values were shared.
+The synthetic SDK probe verified basic encode/decode and CRC rejection, and
+showed that integrity scanning consumes the stream before decoding. SDK stub
+limitations and the remaining real-file/typing checks are recorded in findings.
 
 Tasks:
 
