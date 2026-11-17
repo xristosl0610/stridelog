@@ -31,6 +31,8 @@ jobs:
       - run: uv run --locked ruff check .
       - run: uv run --locked pyright
       - run: uv run --locked pytest
+      - name: Check isolated FIT discovery tooling
+        run: uv run --isolated --no-project --no-env-file --python 3.14 --with garmin-fit-sdk==21.221.0 python notebooks/check_fit_discovery.py
       - run: uv run --locked stridelog --version
       - name: Reject tracked private data
         shell: bash

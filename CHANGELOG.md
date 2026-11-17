@@ -24,3 +24,10 @@ Versioning. No release has been published.
 - Owner-run four-sample FIT structural findings, including ANT+/Bluetooth LE
   distinctions, variable timestamp intervals and explicit source/typing/unit
   verification limits.
+- Repeatable isolated FIT discovery checks, strict SDK-boundary typing
+  verification and a bounded checklist for remaining owner-run evidence.
+
+### Fixed
+
+- FIT notebook projection now includes ANT+ and Bluetooth LE device-type aliases
+  while retaining raw ANT metadata, without inferring armband identity.
