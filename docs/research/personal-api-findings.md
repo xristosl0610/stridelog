@@ -1,0 +1,171 @@
+# Personal API discovery findings
+
+Status: Phase 1 in progress; public-source checks only.
+Verified: 2026-11-17.
+Milestone: [Phase 1 - Discovery spike](https://github.com/xristosl0610/stridelog/milestone/2).
+
+## Evidence and scope
+
+This document records independently checked public facts, not authenticated
+results. No key, token cache, account response or real FIT file was read.
+Neither ADR-0002 nor ADR-0004 is ready for acceptance. Ingestion remains blocked
+until the [Phase 1 checklist](../PLAN.md#13-phase-1-verification-checklist) is
+resolved.
+
+Sources:
+
+- [Official Personal API overview](https://developer.garmin.com/gc-developer-program/personal/personal-api/):
+  key creation and token exchange.
+- [Official rendered Swagger page](https://developer.garmin.com/gc-developer-program/personal/swagger-docs/):
+  endpoint listings and documented range limits, checked in the browser.
+  The HTML-only view does not expose the endpoint documentation.
+- [Published client 1.0.0](https://pypi.org/project/garmin-connect-personal-api-python/1.0.0/):
+  package metadata, installed Python source and CLI help.
+- [Upstream client revision](https://github.com/garmin/connect-personal-api-python/tree/979e6e9fc58bcbf968611509b634ba734d6f8cdf):
+  a separate source of newer interfaces, not the contents of the PyPI release.
+- [Published FIT SDK 21.221.0](https://pypi.org/project/garmin-fit-sdk/21.221.0/)
+  and [upstream revision](https://github.com/garmin/fit-python-sdk/tree/d413e1ccef7b56e59dbd84eb547fa73b5caee282):
+  public package metadata, interface declarations and license only.
+
+No Garmin documentation, SDK source or OpenAPI specification is copied into
+the repository. Descriptions below are project research notes.
+
+## Published client and reproducible checks
+
+Client 1.0.0 requires Python >=3.12 and declares Apache-2.0 licensing. Its
+runtime dependency is requests; interactive mode is optional and not needed.
+These commands passed on Python 3.14.2 without authentication:
+
+```powershell
+python -m uv tool run --from garmin-connect-personal-api-python==1.0.0 gc-personal --help
+python -m uv tool run --from garmin-connect-personal-api-python==1.0.0 gc-personal activities --help
+python -m uv tool run --from garmin-connect-personal-api-python==1.0.0 gc-personal activity-download --help
+```
+
+The tool environment is separate from stridelog's dependencies. Neither
+`pyproject.toml` nor `uv.lock` changed. These commands exercise help, not network
+access to Garmin or Python 3.14 compatibility of authenticated operations.
+
+Important release differences:
+
+| Capability | Published 1.0.0 | Checked upstream revision |
+| --- | --- | --- |
+| Activity types convenience method / CLI command | Absent | Present |
+| Daily VO2 max convenience method / CLI command | Absent | Present |
+| Generic authenticated `get(path, params=...)` | Present | Present |
+| Search, details, ZIP download and core wellness wrappers | Present | Present |
+
+Do not invoke `activity-types` or `vo2-max` with the pinned 1.0.0 CLI. A later
+approved discovery step can use its generic GET interface for documented paths;
+there is no need to install an unpinned Git revision.
+
+## Documented API behavior, not account observations
+
+The official overview confirms the host `personal.connectapi.garmin.com` and
+an API-key-to-token POST exchange. Actual token lifetime is not verified.
+
+The current Swagger page lists both activity types and daily VO2 max. Earlier
+plan notes describing them as missing from the specification are superseded.
+Being documented does not establish account access, returned data or history.
+
+| Dataset | Documented query / range information | Still to verify locally |
+| --- | --- | --- |
+| Activity search | `start` defaults to 0; `limit` defaults to 99; date filters use local activity start dates | Maximum accepted page size, pagination stability, running type selection and history coverage |
+| Daily summaries | Up to 1 year | Inclusive boundaries, actual cap, earliest data and field completeness |
+| Sleep summaries | Up to 31 days | Inclusive boundaries, actual cap, history and optional fields |
+| HRV summaries | Date-range path is listed; no cap established in this review | Cap, history and whether the account returns data |
+| Body Battery | Up to 31 days | Cap, history and whether daily summaries already suffice |
+| Steps | Up to 28 days | Cap, history and whether daily summaries already suffice |
+| Stress | Up to 28 days | Cap, history and whether daily summaries already suffice |
+| Heart-rate zones | Endpoint listed | Per-sport structure and which profile settings are available |
+| Daily VO2 max | Endpoint listed | Successful access, empty result or error; no assumed availability |
+
+The search default of 99 is not a verified maximum. The CLI instead defaults
+to 20. Do not turn either default into a pagination limit assumption.
+Similarly, "1 year" is not evidence for a particular inclusive day count.
+
+The released daily-summary wrapper documents an object containing a `data`
+array, even for one day. Confirm this against a private response before writing
+models; other wrapper return annotations allow arbitrary JSON.
+
+## Credential, cache and error handling
+
+Inspection of released client 1.0.0 establishes:
+
+- Key precedence is explicit argument, explicit key file, environment variable
+  `GARMIN_PERSONAL_API_KEY`, then the default key file. Invalid explicit sources
+  fail instead of silently falling back.
+- The default key file is under the user's profile at
+  `.config\garmin\connect-personal-api-key`; the default bearer cache is
+  `.config\garmin\connect-personal-api-bearer-token.json`.
+- The cache contains a plain-text bearer token and cannot be disabled through
+  the documented interface. Its location can be overridden. It is reused for
+  the same key/base URL when more than an hour remains; otherwise a token
+  exchange occurs. This refresh window is not the token's lifetime.
+- The client allows a base-URL override through
+  `GARMIN_PERSONAL_API_BASE_URL`. Before real requests, verify locally that it
+  is unset or points to the exact official HTTPS origin; never send a real key
+  to a test host.
+- Windows file-permission protection needs an explicit local ACL review; the
+  client's POSIX permission checks do not establish Windows protection.
+- `--quiet` suppresses ordinary request logging, not JSON output or failures.
+  Normal request logs include paths/query parameters; exceptions can include
+  response bodies. Neither stream is safe to send to chat, CI or issue comments.
+- The default requests session has no application-level request pacing or
+  configured retry/backoff policy. A custom session can be supplied. Phase 2
+  must implement the approved pacing and retry behavior rather than assume the
+  client already provides it.
+
+These are source observations, not live 401/404/429 observations. Never provoke
+rate limiting or invalidate a working key just to fill the checklist.
+
+## FIT SDK evaluation gate
+
+The public package metadata declares Python >=3.6 and
+`LicenseRef-FIT-Protocol-License-Agreement`, not MIT or Apache-2.0.
+The upstream package exports Decoder, Stream and Encoder and declares
+`py.typed` / stub package data. These declarations alone do not prove complete
+strict typing, successful synthetic encoding or Python 3.14 runtime behavior.
+
+Review the [FIT Protocol License](https://github.com/garmin/fit-python-sdk/blob/d413e1ccef7b56e59dbd84eb547fa73b5caee282/LICENSE.txt)
+before installing/executing the SDK. It contains use, redistribution and
+benchmarking restrictions. The project's intended approach remains normal
+dependency installation without vendoring or bundling; this is not a legal
+compatibility determination. No SDK installation, execution, parser comparison
+or sample inspection was performed in this check.
+
+## Private verification remaining
+
+All rows below remain pending. Keep personal values and raw evidence outside
+Git and chat; publish structural conclusions only.
+
+| Checklist area | Required evidence |
+| --- | --- |
+| Search and history | Accepted page-size boundary; private count and oldest-date validation; type keys and activity-types access |
+| Activity metadata | Race flag in search/details, update timestamp, summary metrics and whether details are necessary |
+| Download | ZIP member structure, FIT member count and approximate file-size range without private filenames |
+| Wellness | Observed range caps/history, available fields, HRV presence and VO2 max result |
+| Zones | Response structure and per-sport settings; actual zone/HR values stay private |
+| FIT messages | Four representative samples; message/field presence and sampling-interval conclusion |
+| FIT sensors | Classification evidence without serial numbers; explicitly note absent or ambiguous sensor metadata |
+| FIT timing and units | Cadence scaling, elevation source/precision, lap and pause events, and offset handling |
+| HTTP behavior | Status/structure observations and any naturally encountered rate-limit headers under paced discovery |
+| Token timing | Locally checked lifetime only; never publish tokens, payloads or exact expiry |
+| Terms | Owner review of account terms and intended local storage/public code; no copied terms |
+| SDK feasibility | Terms approval, strict-typing evaluation and a synthetic encoding/decoding check |
+
+### Next local session
+
+1. Confirm the Personal API terms allow the intended use and that the expiry
+   reminder is managed privately. Confirm the SDK terms before its evaluation.
+2. Agree a private working directory outside the repository and a credential
+   source without sharing the key. Restrict key, cache and response-file ACLs.
+   Do not search the machine for credentials or use a key as a CLI argument.
+3. Run only explicitly agreed discovery requests, no more than one per second,
+   with all response/error output kept in that private location. Inspect locally,
+   not through tools that would return raw data into the conversation.
+4. Record field names, shapes, observed limits and unresolved items here.
+   Keep account totals/dates, identifiers, actual measurements and locations private.
+5. Prepare an output-free sample-inspection notebook when the SDK/local workflow
+   is agreed. Accept the ADRs only after the remaining evidence supports them,
+   then obtain a separate Phase 2 implementation-plan approval.
