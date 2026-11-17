@@ -18,6 +18,8 @@ HOOK = Path(__file__).resolve().parents[2] / "scripts" / "check_private_files.py
         "stridelog.sqlite",
         "stridelog.sqlite3-wal",
         "stridelog.db-shm",
+        "stridelog.db-journal",
+        "stridelog.sqlite3-journal",
         "route.gpx",
         "route.tcx",
         ".env",

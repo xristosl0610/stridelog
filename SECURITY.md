@@ -3,9 +3,9 @@
 This project is pre-release. Security fixes target the latest main branch.
 
 Do not disclose vulnerabilities, API keys, tokens, health data or location data
-in public issues. Once the personal GitHub repository is published and private
-vulnerability reporting is enabled, use its Security > Report a vulnerability
-form. That channel is not configured yet; do not send sensitive reports until it is.
+in public issues. Use the repository's private
+[Report a vulnerability](https://github.com/xristosl0610/stridelog/security/advisories/new)
+form. Private vulnerability reporting is enabled.
 
 Relevant risks include accidental private-data commits, credential disclosure,
 unsafe archive handling and unauthorized access to the future local API.

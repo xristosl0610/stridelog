@@ -14,7 +14,17 @@ def is_private_path(filename: str) -> bool:
     return (
         path.suffix in DATA_SUFFIXES
         or path.name.endswith(
-            (".sqlite-wal", ".sqlite-shm", ".sqlite3-wal", ".sqlite3-shm", ".db-wal", ".db-shm")
+            (
+                ".sqlite-wal",
+                ".sqlite-shm",
+                ".sqlite-journal",
+                ".sqlite3-wal",
+                ".sqlite3-shm",
+                ".sqlite3-journal",
+                ".db-wal",
+                ".db-shm",
+                ".db-journal",
+            )
         )
         or path.name in PRIVATE_NAMES
         or (path.name.startswith(".env") and path.name != ".env.example")
