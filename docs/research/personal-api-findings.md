@@ -220,8 +220,10 @@ not. Recreating the stream for decoding made the full round-trip pass.
 The future parser must rewind/recreate the stream after an integrity scan,
 rather than mistake an exhausted stream for a valid empty activity.
 
-Strict Pyright evaluation of SDK integration and the four representative real
-files remain pending. No parser performance comparison was performed.
+Strict Pyright evaluation of SDK integration remains pending. The owner-run
+four-sample structural reports are recorded below; real-file timing and unit
+semantics still require verification. No parser performance comparison was
+performed.
 
 ## Approved private date policies
 
@@ -249,8 +251,9 @@ Approved on 2026-11-17:
 
 The owner confirms both settings were configured privately and all four
 original ZIPs are ready, including a known-armband sample. No real dates were
-supplied, and the assistant has not read `.env`. The original FIT samples still
-require local inspection; no ADR is accepted based on the user-assumed rule.
+supplied, and the assistant has not read `.env`. The owner subsequently ran
+the notebook locally and shared only the projections below. No ADR is accepted
+based on the user-assumed rule.
 
 ## Local FIT inspection notebook
 
@@ -273,7 +276,63 @@ dependencies. Clear outputs before saving/committing.
 Synthetic-only validation passed raw/ZIP report parity, all four prompted
 labels, variable/sparse timestamp handling, no-HR inputs, privacy sentinels, and
 explicit failures for corruption, missing/unsupported/in-repository inputs and
-zero/multiple FIT ZIP members. Real-sample results are not yet available.
+zero/multiple FIT ZIP members. These synthetic checks are separate from the
+owner-reported observations below.
+
+## Owner-run four-sample FIT structures
+
+The owner supplied the notebook's projected reports for the wrist, strap,
+armband and race samples. These are owner-run observations, not an independent
+inspection of the originals. All four reports completed with HR values present
+and `variable_intervals`; this describes decoded timestamp spacing, not a
+verified watch recording setting. Source classification was `not_performed`.
+
+| Sample label | Projected device evidence | Interpretation limit |
+| --- | --- | --- |
+| Wrist | Local device entries only | Missing external metadata does not prove wrist HR |
+| Strap | Local entries plus an `antplus` entry with `device_type=120`, manufacturer `garmin`, product `3299` | Product identity and assignment of HR samples to that device remain unverified |
+| Armband | Local entries plus a `bluetooth_low_energy` entry with `device_type=1`, without manufacturer/product in that entry | Unlike the wrist sample, there is a Bluetooth LE entry; it does not identify COROS or prove armband HR |
+| Race | Local entries plus the same projected ANT+ type/manufacturer/product as the strap sample | Matching model metadata does not establish a unique physical device or HR-sample provenance |
+
+The armband file therefore differs structurally from the wrist file despite
+the owner-reported Garmin UI omission. The approved private date fallback
+remains an assumption, not a substitute for missing model/source evidence.
+Repeated projected model entries must not be counted as distinct sensors.
+
+Common record fields are `timestamp`, `position_lat`, `position_long`,
+`distance`, `heart_rate`, `cadence`, `fractional_cadence`, `speed`,
+`enhanced_speed`, `altitude` and `enhanced_altitude`. Their presence does not
+establish units, precision, elevation accuracy or cadence conversion.
+
+All four include record, device-info, session, lap, event and activity message
+groups, alongside other groups. Numeric-string group keys such as `"113"` and
+`"22"` also occur; consumers must not assume every group has a named
+`*_mesgs` key. No undocumented message contents were shared.
+
+- Lap fields include `total_timer_time`, `total_elapsed_time`, `lap_trigger`,
+  cadence/fractional-cadence fields and `total_strides`. Auto-lap behavior,
+  numeric relationships and physical cadence conversion remain unverified.
+- Event fields include `event`, `event_type`, `timer_trigger` and `timestamp`.
+  Field presence alone does not verify actual pause/start/stop behavior.
+- Activity fields include `local_timestamp`, `timestamp` and `total_timer_time`.
+  UTC/local-offset handling and daylight-saving boundaries remain unverified.
+- `hrv_mesgs` occurs in the strap and race projections, but not the wrist or
+  armband projections. This does not establish usable HRV measurements or
+  availability of the separate daily HRV API dataset.
+- The armband projection includes `training_file_mesgs`, `workout_mesgs` and
+  `workout_step_mesgs`; no workout contents were shared.
+
+The projections also expose a notebook limitation: device-field unions contain
+`antplus_device_type` for strap/race and `ble_device_type` for armband, but the
+model allowlist currently uses `ant_device_type` instead. Protocol-specific
+alias values were not projected. Preserve the raw `device_type` observations
+above without interpreting them as decoded sensor identities; a focused
+projection correction and synthetic check remain pending.
+
+No serial-number values, private paths, dates, locations or physiological
+values were shared. No original files or local notebook outputs are added to
+the repository. Structural inspection is complete, but these reports alone do
+not satisfy the remaining FIT timing/units or ADR acceptance gates.
 
 ## Private verification remaining
 
@@ -289,16 +348,16 @@ conclusions only.
 | --- | --- |
 | Search and history | Accepted page-size boundary; private count and oldest-date validation; type keys and activity-types access |
 | Activity metadata | Search/details field presence recorded above; known-race behavior, edit-marker semantics, units and optional values still need verification |
-| Download | ZIP member structure, FIT member count and approximate file-size range without private filenames |
+| Download | All four local notebook inspections completed; ZIP layout/member counts and approximate file-size range were not projected and remain unverified |
 | Wellness | Core one-day shapes/field presence recorded above; range caps/history, optional values, broader HRV availability and VO2 max result remain pending |
 | Zones | Response structure and per-sport settings; actual zone/HR values stay private |
-| FIT messages | Four representative samples; message/field presence and sampling-interval conclusion |
-| FIT sensors | Classification evidence without serial numbers; explicitly note absent or ambiguous sensor metadata |
+| FIT messages | Four owner-run projections received; common fields/groups and variable timestamp intervals recorded above; watch recording setting unverified |
+| FIT sensors | Local-only, ANT+ and Bluetooth LE distinctions recorded above; exact source/model identity and protocol-specific alias values remain unresolved |
 | FIT timing and units | Cadence scaling, elevation source/precision, lap and pause events, and offset handling |
 | HTTP behavior | Status/structure observations and any naturally encountered rate-limit headers under paced discovery |
 | Token timing | Locally checked lifetime only; never publish tokens, payloads or exact expiry |
 | Terms | Owner confirms terms, private-folder permissions and private expiry-date configuration; no copied terms or dates; no external reminder required |
-| SDK feasibility | Terms approved and synthetic round-trip passed; stub limitations recorded; strict integration typing and real-file evaluation remain pending |
+| SDK feasibility | Terms approved, synthetic round-trip passed and four local structural inspections completed; strict integration typing and real-file timing/units remain pending |
 
 ### Next local session
 
@@ -314,9 +373,11 @@ conclusions only.
    not through tools that would return raw data into the conversation.
 4. Record field names, shapes, observed limits and unresolved items here.
    Keep account totals/dates, identifiers, actual measurements and locations private.
-5. Run the prepared output-free FIT notebook locally on the four samples.
-   Accept the ADRs only after the remaining evidence supports them, then obtain
-   a separate Phase 2 implementation-plan approval.
+5. The four projected FIT reports are now recorded above. Keep local notebook
+   outputs private and clear them before committing. Next resolve the
+   protocol-alias projection gap and remaining timing/units checks without
+   exposing raw values. Accept the ADRs only after the remaining evidence
+   supports them, then obtain a separate Phase 2 implementation-plan approval.
 
 ### Windows private-folder setup (owner-run)
 

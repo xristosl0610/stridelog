@@ -21,3 +21,6 @@ Versioning. No release has been published.
   fallback policy for future settings/classification, without external reminders.
 - Output-free local FIT discovery notebook with synthetic validation and
   structural/model-only reporting for owner-run sample inspection.
+- Owner-run four-sample FIT structural findings, including ANT+/Bluetooth LE
+  distinctions, variable timestamp intervals and explicit source/typing/unit
+  verification limits.

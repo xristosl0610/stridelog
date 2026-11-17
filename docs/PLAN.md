@@ -856,10 +856,10 @@ and upstream interfaces. The owner confirmed reviewing the Personal API and
 FIT SDK terms and approved planned local use. The owner reports successful
 private-folder permission setup and one authenticated activity-search command
 using an ignored local `.env`. The assistant has not read credentials or raw
-responses. An isolated synthetic FIT SDK probe has since passed; no real FIT
-inspection has occurred.
+responses. An isolated synthetic FIT SDK probe has since passed, followed by
+owner-run local inspection of four samples with only projected reports shared.
 Private verification uses owner-run commands, with only structural conclusions
-shared. Real-sample inspection, remaining response structures and the remaining
+shared. Real-file timing/units, remaining response structures and the remaining
 Section 13 checks are still pending; both ADRs remain proposed.
 The owner subsequently supplied search/details field names only: summary metric
 names differ, details expose a candidate `metadataDTO.lastUpdateDate`, and
@@ -876,16 +876,20 @@ and an optional armband fallback with explicit user-assumed provenance, and
 confirms both dates are configured privately. Missing sensor metadata must not
 be treated as confirmed wrist HR. All four original sample ZIPs are owner-ready,
 including a known-armband run even though Garmin's activity UI omits the sensor.
-The [output-free FIT notebook](../notebooks/01_fit_discovery.ipynb) is prepared
-and validated on synthetic inputs only. Real-sample reports are still pending;
-no real files have been inspected by the assistant.
+The [output-free FIT notebook](../notebooks/01_fit_discovery.ipynb) passed
+synthetic checks, and the owner supplied all four structural reports. All
+report variable timestamp intervals. The wrist projection contains only local
+device entries, strap/race include ANT+ entries, and armband includes a Bluetooth
+LE entry without manufacturer/product. This does not establish exact sensor
+identity or HR-sample provenance. A protocol-specific device-type projection
+gap is documented in findings; no real files were inspected by the assistant.
 
 Tasks:
 
 - [x] 1.1 Read the Personal API terms and create a key with a chosen lifetime. Save it outside the repository, or in the ignored local `.env` selected by the owner, and record its actual expiration as `STRIDELOG_API_KEY_EXPIRES_ON=YYYY-MM-DD`. Terms, the first authenticated check and private expiry configuration are owner-confirmed. No external calendar is required. Never paste the key or private dates into chats, issues or code.
 - [x] 1.2 Explore the official command-line interface in an isolated tool environment: `python -m uv tool run --from garmin-connect-personal-api-python==1.0.0 gc-personal --help`. Activities and download help also pass; authenticated exploration remains in 1.3. No project code or dependencies added.
 - [ ] 1.3 Work through the checklist in Section 13 (activities, wellness, FIT contents, API behavior).
-- [ ] 1.4 Inspect 4 representative FIT files in a notebook with outputs stripped: one from the wrist-only period, one from the chest-strap period, one known to use the armband (even if unlisted in Garmin's UI), and one race. Record absent or ambiguous metadata without substituting a user assumption for observed evidence.
+- [x] 1.4 Inspect 4 representative FIT files in a notebook with outputs stripped: one from the wrist-only period, one from the chest-strap period, one known to use the armband (even if unlisted in Garmin's UI), and one race. Owner-run projected reports are recorded in findings; only the output-free notebook is published. Ambiguous source metadata remains explicit, and the remaining Section 13 checks and issue #20 acceptance are still open.
 - [ ] 1.5 Record the findings (data structures, field names and limits, but no personal values) in `docs/research/personal-api-findings.md`. Then update this plan and accept ADR-0002 and ADR-0004.
 
 **Deliverable**: a findings document and an updated plan.
@@ -1288,8 +1292,9 @@ from observed limits, and mark unverified checks explicitly.
 
 **FIT contents (4 sample runs)**
 
-- [ ] Message types present, and the recording interval (smart recording or every second).
-- [ ] `device_info` entries in each heart-rate period (wrist, chest strap, armband), including missing/ambiguous metadata. Inspect a known-armband sample even if Garmin's activity UI omits the sensor; distinguish FIT evidence from the optional private date-based assumption.
+- [x] Message types and record-field presence in four owner-run projections; all have variable decoded timestamp intervals.
+- [ ] Actual watch recording setting (smart recording or every second); variable intervals alone do not prove the setting.
+- [x] `device_info` entries in each sample, including the known-armband sample despite the Garmin UI omission: local-only for wrist, ANT+ for strap/race and Bluetooth LE for armband. Exact identity/HR provenance remains unverified, protocol-specific aliases were not projected, and the private date rule is not FIT evidence.
 - [ ] Where altitude comes from and how good it is; whether Garmin's corrected elevation appears only in the JSON.
 - [ ] Cadence units. FIT stores running cadence per leg, so steps per minute is double the value plus the fractional part.
 - [ ] Laps (auto-lap distance), timer events for pauses, and the local time offset.
