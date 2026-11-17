@@ -220,10 +220,22 @@ not. Recreating the stream for decoding made the full round-trip pass.
 The future parser must rewind/recreate the stream after an integrity scan,
 rather than mistake an exhausted stream for a valid empty activity.
 
-Strict Pyright evaluation of SDK integration remains pending. The owner-run
-four-sample structural reports are recorded below; real-file timing and unit
-semantics still require verification. No parser performance comparison was
-performed.
+Strict Pyright 1.1.414 now passes all notebook code cells and the standalone
+synthetic check harness against SDK 21.221.0 on Python 3.14.2: zero errors,
+warnings or informational diagnostics. The notebook cells were exported to
+ignored scratch space for static analysis; the private-input cell was not run.
+This checks the current decoder/projection boundary, not the completeness of
+the SDK's annotations. Encoder/callback dictionaries still contain upstream
+`Any`; future application models must retain their own typed boundaries.
+The installed enum annotations also use camel-case labels such as
+`heartRate`/`bluetoothLowEnergy`, while the synthetic decoder returns
+`heart_rate`/`bluetooth_low_energy`. The current projection accepts scalar
+strings instead of trusting those literal annotations. A future adapter must
+validate/normalize runtime enums rather than treating a passing static check
+as proof of SDK annotation accuracy. No third-party stubs or source were edited.
+The owner-run four-sample structural reports are recorded below; real-file
+timing and unit semantics still require verification. No parser performance
+comparison was performed.
 
 ## Approved private date policies
 
@@ -273,11 +285,39 @@ and ipykernel 7.4.0 (the existing approved notebook dependency's locked version)
 It does not load `.env`, contact Garmin, modify originals or change project
 dependencies. Clear outputs before saving/committing.
 
+Select the discovery environment by its interpreter path, not merely its Python
+version. The application environment also uses Python 3.14 but has no SDK.
+
 Synthetic-only validation passed raw/ZIP report parity, all four prompted
 labels, variable/sparse timestamp handling, no-HR inputs, privacy sentinels, and
 explicit failures for corruption, missing/unsupported/in-repository inputs and
 zero/multiple FIT ZIP members. These synthetic checks are separate from the
 owner-reported observations below.
+
+### Synthetic checks and typing result
+
+[check_fit_discovery.py](../../notebooks/check_fit_discovery.py) uses standard
+library unittest so the optional SDK stays outside application/test
+dependencies. It loads only notebook imports/helpers, never the private-input
+cell. Its synthetic fixtures stay in an automatically cleaned subdirectory
+under ignored `.tools`; a simulated repository tests the outside-repository
+boundary without writing outside the workspace.
+
+```powershell
+& .tools\fit-discovery\Scripts\python.exe notebooks\check_fit_discovery.py
+```
+
+Four focused checks pass: protocol alias projection with raw ANT retained and
+no source classification; raw/ZIP parity with private-value sentinels; explicit
+CRC failure; and in-repository input rejection. CI runs the same checks on
+Windows and Linux in an isolated SDK environment, without adding the SDK to the
+application lockfile.
+
+Local strict typing used the installed Pyright JavaScript entry point with
+VS Code's existing runtime (`ELECTRON_RUN_AS_NODE=1`), not a newly installed
+Node runtime. The check used a scratch strict-mode configuration, exported
+notebook code and the discovery interpreter via `--pythonpath`. No SDK source
+or generated third-party stubs are copied into the repository.
 
 ## Owner-run four-sample FIT structures
 
@@ -322,12 +362,17 @@ groups, alongside other groups. Numeric-string group keys such as `"113"` and
 - The armband projection includes `training_file_mesgs`, `workout_mesgs` and
   `workout_step_mesgs`; no workout contents were shared.
 
-The projections also expose a notebook limitation: device-field unions contain
+The original projections exposed a notebook limitation: device-field unions contain
 `antplus_device_type` for strap/race and `ble_device_type` for armband, but the
-model allowlist currently uses `ant_device_type` instead. Protocol-specific
-alias values were not projected. Preserve the raw `device_type` observations
-above without interpreting them as decoded sensor identities; a focused
-projection correction and synthetic check remain pending.
+model allowlist included only the raw ANT alias `ant_device_type`. The corrected
+notebook preserves that field and also projects ANT+ and BLE aliases.
+Synthetic SDK decoding confirms ANT+ type 120 and BLE type 1 both expand to
+`heart_rate`, while raw ANT type 120 remains numeric. These aliases identify a
+protocol device category, not manufacturer, model, wear location or HR-sample
+assignment. A BLE heart-rate device can be a chest strap or an armband.
+The original owner reports above did not include alias values; a revised
+owner-run armband projection remains to be collected. The private date
+fallback is not removed or upgraded to FIT-confirmed classification.
 
 No serial-number values, private paths, dates, locations or physiological
 values were shared. No original files or local notebook outputs are added to
@@ -352,12 +397,12 @@ conclusions only.
 | Wellness | Core one-day shapes/field presence recorded above; range caps/history, optional values, broader HRV availability and VO2 max result remain pending |
 | Zones | Response structure and per-sport settings; actual zone/HR values stay private |
 | FIT messages | Four owner-run projections received; common fields/groups and variable timestamp intervals recorded above; watch recording setting unverified |
-| FIT sensors | Local-only, ANT+ and Bluetooth LE distinctions recorded above; exact source/model identity and protocol-specific alias values remain unresolved |
+| FIT sensors | Protocol distinctions recorded above; aliases now checked synthetically; revised owner armband projection and exact source/model identity remain unresolved |
 | FIT timing and units | Cadence scaling, elevation source/precision, lap and pause events, and offset handling |
 | HTTP behavior | Status/structure observations and any naturally encountered rate-limit headers under paced discovery |
 | Token timing | Locally checked lifetime only; never publish tokens, payloads or exact expiry |
 | Terms | Owner confirms terms, private-folder permissions and private expiry-date configuration; no copied terms or dates; no external reminder required |
-| SDK feasibility | Terms approved, synthetic round-trip passed and four local structural inspections completed; strict integration typing and real-file timing/units remain pending |
+| SDK feasibility | Terms approved, synthetic checks and strict notebook/harness typing pass; four local structural inspections complete; real-file timing/units remain pending |
 
 ### Next local session
 
@@ -374,10 +419,32 @@ conclusions only.
 4. Record field names, shapes, observed limits and unresolved items here.
    Keep account totals/dates, identifiers, actual measurements and locations private.
 5. The four projected FIT reports are now recorded above. Keep local notebook
-   outputs private and clear them before committing. Next resolve the
-   protocol-alias projection gap and remaining timing/units checks without
-   exposing raw values. Accept the ADRs only after the remaining evidence
-   supports them, then obtain a separate Phase 2 implementation-plan approval.
+   outputs private and clear them before committing. Use the corrected
+   protocol-alias projection and the bounded checks below for the remaining
+   evidence. Accept the ADRs only after the evidence supports them, then obtain
+   a separate Phase 2 implementation-plan approval.
+
+### Remaining owner-run checks
+
+Use existing private files and settings first. This checklist does not run
+requests or ask for raw responses. Any further API request batch needs exact
+documented paths/ranges agreed in advance, pacing and private output/error
+redirection; do not probe rate limits or edit an activity solely to
+provoke a change marker.
+
+| Area | Local action | Share only |
+| --- | --- | --- |
+| Armband device category | Rerun the corrected FIT notebook in the discovery kernel | The armband `sensor_models_not_identifiers` block; no paths or serial numbers |
+| Recording setting | Check the watch's recording configuration; distinguish the current setting from historical evidence | `smart`, `every_second` or `unknown`, and whether historical applicability is known |
+| Cadence/elevation/timing | Privately compare FIT fields with the activity UI and inspect lap/timer/local-time relationships | Confirmed conversion/relationship or `unverified`; no measurements, timestamps or offsets |
+| Known race and edit marker | Inspect the saved known-race details and any naturally observed before/after edit evidence | Event-type key, JSON kind/format of `lastUpdateDate`, and a yes/no/unverified change conclusion; no IDs, titles or timestamp values |
+| Search/history | Validate container shape, paging and required history coverage in a separately agreed small request batch | Shape, accepted page-size setting and coverage yes/no; no counts, IDs or activity dates; leave maximum unverified unless established |
+| Wellness/zones/VO2 max | Inspect existing responses first; agree any remaining endpoint/range checks before requests | Container/field names, null/empty/error category, cap/boundary conclusion and units; no daily values, zones or dates |
+| Token/error behavior | Inspect the protected cache locally and only naturally encountered errors | Timing-claim presence, approximate lifetime and sanitized status/shape conclusions; never tokens, claims payloads, exact expiry or response bodies |
+
+Unknowns stay explicit. Completing the device-alias check alone does not close
+Phase 1 or accept either ADR. Phase 2 ingestion and Phase 3 HR-source
+classification remain separate implementation approvals.
 
 ### Windows private-folder setup (owner-run)
 
