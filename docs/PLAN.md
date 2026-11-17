@@ -333,16 +333,19 @@ flowchart LR
 
 1. Take a lock (a lock file in the data folder), so the command line and the web app never sync at the same time.
 2. Get a bearer token. Reuse the cached token if it has more than 1 hour left; otherwise exchange the key. If a request returns 401, exchange the key once more. If that also fails, stop with a clear message: the key has expired or was revoked, with a link to create a new one.
-3. Activities: list from 7 days before the last synced activity date up to today, page by page, and keep only running activity types (a configurable list).
+3. Activities: list from 7 days before the last completed search day up to today, inclusively and page by page; keep configured running keys and their catalog descendants.
    - New activity: save the summary JSON, then download the details JSON and the original ZIP. If Phase 1 shows the summary already contains everything we need, the details request is dropped.
    - Known activity whose summary or last-update timestamp changed (renamed, race flag set): refresh the JSON only. The FIT file never changes.
    - Phase 1 observation: the inspected search item has no obvious last-update field; `metadataDTO.lastUpdateDate` is present in details only. Do not equate start/end/upload timestamps with edits. Details remain in scope, and the Phase 2 implementation plan must specify detail refresh/reconciliation and the limitations of detecting older edits with a recent-activity lookback.
 4. Wellness: for each dataset, request from 3 days before the last synced date up to today, in chunks no larger than that endpoint's date-range cap, and save each response.
-5. Write every file atomically (to a temporary file, then rename) and record it in the manifest with its SHA-256 checksum.
-6. Move each dataset's sync position forward only after its files are safely written, so an interrupted sync resumes where it stopped.
-7. Import new or changed raw files into the database, recalculate derived metrics, record a `sync_run` summary and release the lock.
+5. Write files atomically and record SHA-256 checksums. Preserve each unique JSON content version before replacing its current view; never replace original ZIPs.
+6. Commit activity manifest entries only after that activity's summary/details/original are durable. Advance activity progress after all pages, wellness after each durable day. Interrupted passes may repeat pages while reusing completed originals.
+7. Record the safe `sync_run` outcome and release the process-owned lock. Parsing/imported measurement tables and derived-metric recalculation begin in Phases 3 and 4, not raw ingestion.
 
-At about 1 request per second, the first full download of all your history should take roughly 20 to 40 minutes. Daily syncs take seconds.
+At least one second separates HTTP attempts. Initial duration depends on three
+wellness requests per calendar day plus search/detail/original requests; no
+fixed 20-40-minute estimate is verified. Later runs still refresh lookbacks and
+current profiles. Even a zero-day lookback rechecks the last completed day.
 
 ### 5.5 Repository layout
 
@@ -403,13 +406,20 @@ stridelog/
 │   │   ├── details.json                   from activity details
 │   │   └── original.zip                   original FIT file, never modified
 │   ├── wellness/<dataset>/<start>_<end>.json
-│   └── profile/heart-rate-zones/<fetched_at>.json
+│   └── profile/
+│       ├── activity-types.json
+│       └── heart-rate-zones/current.json
 ├── stridelog.sqlite                       plus -wal and -shm files while running
+├── bearer-token.json                      protected, atomically promoted SDK cache
+├── sync.lock                              retained inode, lock held only during sync
 ├── backups/
 └── logs/
 ```
 
 The data folder is deliberately outside the repository, so personal data cannot be committed by accident.
+Every JSON current view also has immutable content versions under
+`<filename>.versions/<sha256>.json`; both are checksummed in the manifest.
+Only current views are replaced. Originals and prior JSON versions are preserved.
 
 ### 5.7 Configuration and secrets
 
@@ -421,8 +431,9 @@ The data folder is deliberately outside the repository, so personal data cannot 
 
 ### 5.8 Command-line interface
 
-`--version`, local `doctor [--initialize]` and aggregate operational `status`
-are implemented. `doctor` checks presence rather than authenticating credentials;
+`--version`, local `doctor [--initialize]`, raw `sync [--since DATE] [--dry-run]`
+and aggregate operational `status` are implemented.
+`doctor` checks presence rather than authenticating credentials;
 missing configuration/storage fails readiness. `--initialize` is the explicit
 offline migration/bootstrap operation. The remaining commands below are planned;
 activity/data-quality counts require later parsed tables.
@@ -948,17 +959,17 @@ Tasks:
 
 - [x] 2.1 Settings with pydantic-settings (`STRIDELOG_*` environment variables or automatic `.env`): default `~/.stridelog` outside the checkout, recent-day lookbacks, finite pacing of at least one second, exact private dates and secret-safe validation.
 - [x] 2.2 Database foundation: SQLAlchemy engine and sessions, SQLite WAL/foreign keys/busy timeout, packaged Alembic and operations tables; idempotent explicit initialization and persistence verified synthetically.
-- [ ] 2.3 `GarminSource` interface and the `PersonalApiSource` adapter on top of Garmin's client:
-  - a shared `requests` session with urllib3 `Retry`, which retries 429 and 5xx errors, waits longer after each attempt and follows `Retry-After`;
+- [x] 2.3 `GarminSource` interface and the `PersonalApiSource` adapter on top of Garmin's pinned client:
+  - a shared `requests` session with urllib3 `Retry` accounting, up to four retries for transient connection errors, 429 and 5xx, backoff and `Retry-After`;
   - request pacing;
   - clear error messages, for example for an expired key or no network.
-- [ ] 2.4 Raw store with the layout in Section 5.6: atomic writes, a SHA-256 manifest, and FIT ZIP files that are never overwritten.
-- [ ] 2.5 Activity sync as described in Section 5.4: running activity types only, change detection, re-fetching the last 7 days, and `--since` for older history.
-- [ ] 2.6 Wellness sync: daily summaries, sleep and HRV, plus Body Battery, stress and steps only if needed. Requests are split to fit each endpoint's date-range cap, and the last 3 days are re-fetched.
-- [ ] 2.7 Sync tracking: a sync position for each dataset, a `sync_run` log, a lock so only one sync runs at a time, and `--dry-run`.
-- [ ] 2.8 Commands: `doctor`, `sync` and `status`. `doctor` warns 14 days before the configured key expiration and reports expiry clearly, without exposing credentials. Test invalid dates and the warning/expiry boundaries; no external reminder integration.
-- [ ] 2.9 (Should) `import-fit PATH` for FIT files copied from the watch.
-- [ ] 2.10 Tests with a fake `GarminSource` covering:
+- [x] 2.4 Raw store: atomic current views, immutable JSON content versions, SHA-256 manifest and never-overwritten FIT ZIPs.
+- [x] 2.5 Running keys/catalog descendants only; summary checksums, recent detail refreshes, seven-day lookback and explicit older `--since` reconciliation.
+- [x] 2.6 One-day daily/sleep/HRV requests, preserved null HRV and three-day wellness lookback; current zones/catalog snapshots. Dedicated Body Battery/stress/steps are unnecessary for raw daily ingestion.
+- [x] 2.7 Durable per-dataset progress, safe run states, process-owned lock, stale-run recovery and no-network/no-write dry-run.
+- [x] 2.8 `doctor`, `sync`, `status`, private-date warnings and sanitized failures; synthetic boundary tests pass. No external reminder integration.
+- [ ] 2.9 (Should) `import-fit PATH` for FIT files copied from the watch. Not included in the core-sync bundle; remains an explicit open Should task.
+- [x] 2.10 Tests with a fake `GarminSource` and real-client mocked transport covering:
   - running a sync twice changes nothing the second time;
   - an interrupted sync resumes correctly;
   - retries and waiting after errors;
@@ -969,6 +980,9 @@ Tasks:
 **Deliverable**: a complete local raw archive of every run since January 2025 and every wellness day.
 
 **Acceptance criteria**:
+
+Core implementation and synthetic checks are complete; the following full-account
+checks remain owner-run and unverified. No assistant tool performs account ingestion.
 
 - The first full download finishes without manual intervention.
 - A second `sync` straight afterwards downloads nothing new except the re-fetched recent days.

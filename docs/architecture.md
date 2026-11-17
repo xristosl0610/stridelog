@@ -9,11 +9,17 @@ implemented behavior; the [project plan](PLAN.md) is the detailed roadmap.
 - Automatic `.env` configuration and exact-format private date validation.
 - SQLite operations tables, WAL/foreign keys and packaged Alembic upgrades;
   `doctor --initialize` prepares storage explicitly without network access.
+- Official-client adapter with a shared paced/retrying session, bounded auth
+  refresh, official-origin/no-redirect enforcement and atomically promoted cache.
+- Incremental running/daily/sleep/HRV ingestion, recent lookbacks, explicit older
+  reconciliation, per-dataset progress and process-owned synchronization lock.
+- Checksum manifest, immutable originals and content-versioned JSON with atomic
+  current views; no-write/no-network dry-run and synthetic failure/resume tests.
 - Privacy checks, synthetic tests and development/CI configuration.
 - Output-free owner-run FIT discovery notebook, validated with synthetic inputs;
   this is not the application parser or HR-source classification implementation.
 
-## Planned data flow
+## Data flow (parsing and everything after it remain planned)
 
 Garmin source interface -> immutable raw archive -> typed parsers -> SQLite ->
 Polars analytics -> local FastAPI -> React/TypeScript.
@@ -39,10 +45,45 @@ The private `STRIDELOG_API_KEY_EXPIRES_ON` setting records actual expiration in
 `YYYY-MM-DD` format. `doctor` warns within 14 days of expiry when run;
 no external calendar service or unattended notification is implied.
 
+## Raw archive policy
+
+JSON is canonicalized without metric interpretation. Each unique payload is
+preserved under `<filename>.versions/<sha256>.json`; fixed filenames are mutable
+atomic current views, not the immutable history. Reverting to an earlier payload
+updates the current manifest without losing either version. Original ZIPs are
+never overwritten or extracted. Status file counts include JSON version copies.
+
+Manifest/progress transactions commit only after file writes. JSON heads left
+ahead of the manifest by an interruption can be reconciled against their durable
+version; unknown checksum mismatches stop rather than silently overwrite data.
+File contents are flushed/fsynced before atomic replacement; POSIX directories
+are fsynced afterwards. Hardware/power-loss guarantees are not asserted.
+Abrupt process termination may leave ignored temporary files, never manifest
+entries or progress for incomplete writes.
+
+Activity cursors advance after all pages, wellness cursors after each complete
+day; neither is evidence of full historical coverage until owner acceptance.
+An interrupted activity pass may repeat searches while reusing durable originals.
+Last completed dates minus configured lookbacks are inclusive; zero still
+rechecks the last completed day. Recent lookbacks do not find arbitrary old edits.
+Full older reconciliation requires the same explicit `--since` on each retry.
+
+The SDK sees only a disposable bearer-cache staging file; complete cache updates
+are promoted atomically through the same file-writing helper used by archival.
+Malformed caches fail explicitly, rather than silently treating corruption as a
+cache miss. POSIX key/cache files must be owner-only; Windows ACLs remain an
+owner setup responsibility. Key/cache presence in doctor is not authentication.
+
+Retry accounting uses urllib3 with at most four retries for transient connection
+errors, HTTP 429 and 5xx; backoff and `Retry-After` are honored.
+Every attempt shares the configured pacing clock, including token exchange and
+one permitted 401 refresh. Redirects and nonofficial origins are rejected;
+POST is allowed only for token exchange. Raw upstream errors and request paths
+are withheld, and dependency logging is suppressed only during source use.
+
 ## Open decisions
 
-- Versioned JSON refreshes must preserve old raw responses; the fixed paths in the
-  draft plan cannot both be overwritten and remain immutable. Resolve in Phase 2.
+- Optional `import-fit` remains a Should task, not part of completed core sync.
 - External map tiles conflict with Garmin-only outgoing requests and can reveal
   viewed locations. Resolve explicitly before Phase 6; no external maps yet.
 - Database relationships must permit rebuilds without cascading into annotations.

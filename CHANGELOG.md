@@ -7,6 +7,14 @@ Versioning. No release has been published.
 
 ### Added
 
+- Phase 2 official Personal API adapter with paced attempts, bounded retries,
+  `Retry-After`, one-refresh authentication recovery and atomic bearer caching.
+- Running-only raw activity sync, one-day daily/sleep/HRV requests, current
+  profiles, recent lookbacks and explicit older-history reconciliation.
+- Atomic/checksummed archival, immutable original ZIPs and JSON content versions,
+  durable progress, process locking, interruption recovery and no-I/O dry-run.
+- Fake-source and real-client/mocked-transport acceptance checks; no live account
+  ingestion or FIT interpretation is included.
 - Phase 2 automatic `.env` settings, strict private-date and storage validation,
   local `doctor`/`status` commands and expiry warnings without authentication.
 - SQLAlchemy operations tables and packaged Alembic initialization, SQLite WAL,

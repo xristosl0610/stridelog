@@ -26,5 +26,5 @@ def test_no_arguments_shows_help_without_claiming_features_exist(force_color: st
 
 
 def test_unimplemented_command_is_rejected() -> None:
-    result = runner.invoke(app, ["sync"])
+    result = runner.invoke(app, ["analyze"])
     assert result.exit_code == 2
