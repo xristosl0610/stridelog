@@ -130,7 +130,7 @@ class ApiDiscoveryChecks(unittest.TestCase):
         )
         return response
 
-    def _main(self, answers: list[str] | None = None, live: bool = True) -> int:
+    def _main(self, answers: list[str] | None = None, argv: list[str] | None = None) -> int:
         if answers is None:
             answers = [str(self.private), "2030-01-02", "123456789", "RUN"]
         with (
@@ -138,7 +138,7 @@ class ApiDiscoveryChecks(unittest.TestCase):
             contextlib.redirect_stdout(self.stdout),
             contextlib.redirect_stderr(self.stderr),
         ):
-            return discovery.main(["--live"] if live else [])
+            return discovery.main(["--live"] if argv is None else argv)
 
     def _report(self) -> dict[str, object]:
         marker = "Shareable structural report (copy only this JSON, not the entered inputs):\n"
@@ -202,11 +202,154 @@ class ApiDiscoveryChecks(unittest.TestCase):
         self._assert_private_output()
 
     def test_dry_run_and_cancel_send_nothing(self) -> None:
-        self.assertEqual(self._main(live=False), 0)
+        self.assertEqual(self._main(argv=[]), 0)
         self.assertEqual(self._main([str(self.private), "2030-01-02", "123456789", "CANCEL"]), 0)
         self.send.assert_not_called()
         self.assertEqual(list(self.private.iterdir()), [])
         self._assert_private_output()
+
+    def _saved_responses(self) -> None:
+        payloads = {
+            "activity_types": [{"key": "private-response-body", "parent": None}],
+            "vo2_max": [
+                {
+                    "generic": {
+                        "calendarDate": "2030-01-02",
+                        "vo2MaxValue": 67.12345,
+                        "vo2MaxPreciseValue": 67.12345,
+                    },
+                    "cycling": None,
+                    "rowing": None,
+                    "private-dynamic-field": "private-response-body",
+                }
+            ],
+            "zones": [
+                {
+                    "sport": "private-response-body",
+                    "trainingMethod": "private-response-body",
+                    "restingHeartRateUsed": 197,
+                    "lactateThresholdHeartRateUsed": 197,
+                    "maxHeartRateUsed": 197,
+                    "restingHrAutoUpdateUsed": True,
+                    **{f"zone{number}Floor": 197 for number in range(1, 6)},
+                }
+            ],
+        }
+        for name, payload in payloads.items():
+            (self.private / f"{name}.json").write_text(json.dumps(payload), "utf-8")
+        for name in (".env", "bearer-token.json"):
+            (self.private / name).write_text("private-response-body", "utf-8")
+
+    def test_offline_review_reads_only_fixed_response_files_without_authentication(self) -> None:
+        self._saved_responses()
+        original_files = {path.name: path.read_bytes() for path in self.private.iterdir()}
+        original_read = Path.read_text
+        expected = {
+            self.private / f"{name}.json" for name in ("activity_types", "vo2_max", "zones")
+        }
+        seen: set[Path] = set()
+
+        def read_response(path: Path, *, encoding: str) -> str:
+            self.assertIn(path, expected)
+            seen.add(path)
+            return original_read(path, encoding=encoding)
+
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "GARMIN_PERSONAL_API_KEY": "",
+                    "GARMIN_PERSONAL_API_BASE_URL": "https://example.invalid",
+                },
+            ),
+            patch.object(Path, "read_text", autospec=True, side_effect=read_response),
+            patch.object(discovery.PersonalApiAuthenticator, "obtain_token") as authenticate,
+        ):
+            self.assertEqual(self._main([str(self.private)], argv=["--offline"]), 0)
+        authenticate.assert_not_called()
+        self.send.assert_not_called()
+        self.assertEqual(seen, expected)
+        report = self._report()
+        self.assertEqual(report["mode"], "offline_saved_responses")
+        self.assertNotIn("token_timing_unverified_claims", report)
+        for field in (
+            "key",
+            "generic",
+            "cycling",
+            "rowing",
+            "vo2MaxValue",
+            "vo2MaxPreciseValue",
+            "trainingMethod",
+            "restingHeartRateUsed",
+            "lactateThresholdHeartRateUsed",
+            "maxHeartRateUsed",
+            "restingHrAutoUpdateUsed",
+            *(f"zone{number}Floor" for number in range(1, 6)),
+        ):
+            self.assertIn(f'"{field}":', self.stdout.getvalue())
+        self.assertEqual(
+            {path.name for path in self.private.iterdir()},
+            {"activity_types.json", "vo2_max.json", "zones.json", ".env", "bearer-token.json"},
+        )
+        self.assertEqual(
+            {path.name: path.read_bytes() for path in self.private.iterdir()}, original_files
+        )
+        self._assert_private_output()
+
+    def test_documented_vo2_wrapper_projects_kinds_not_measurements(self) -> None:
+        self.assertEqual(
+            discovery.shape([{"generic": {"vo2MaxValue": 67.12345}}]),
+            {
+                "kind": "array",
+                "has_items": True,
+                "first_item": {
+                    "kind": "object",
+                    "other_fields_omitted": False,
+                    "fields": {
+                        "generic": {
+                            "kind": "object",
+                            "other_fields_omitted": False,
+                            "fields": {"vo2MaxValue": {"kind": "number"}},
+                        }
+                    },
+                },
+            },
+        )
+
+    def test_offline_missing_or_malformed_file_never_prints_a_partial_report(self) -> None:
+        self._saved_responses()
+        source = self.private / "zones.json"
+        source.unlink()
+        self.assertEqual(self._main([str(self.private)], argv=["--offline"]), 2)
+        source.write_text("private-response-body", "utf-8")
+        self.assertEqual(self._main([str(self.private)], argv=["--offline"]), 2)
+        self.assertNotIn("Shareable structural report", self.stdout.getvalue())
+        self.send.assert_not_called()
+        self._assert_private_output()
+
+    def test_offline_rejects_repository_inputs_and_linked_response_files(self) -> None:
+        self._saved_responses()
+        self.assertEqual(self._main([str(self.repository)], argv=["--offline"]), 2)
+        with patch.object(Path, "is_symlink", return_value=True):
+            self.assertEqual(self._main([str(self.private)], argv=["--offline"]), 2)
+        original_resolve = Path.resolve
+
+        def redirected(path: Path, strict: bool = False) -> Path:
+            if path.name == "zones.json":
+                return self.repository / "private-response-body"
+            return original_resolve(path, strict=strict)
+
+        with patch.object(Path, "resolve", autospec=True, side_effect=redirected):
+            self.assertEqual(self._main([str(self.private)], argv=["--offline"]), 2)
+        self.assertNotIn("Shareable structural report", self.stdout.getvalue())
+        self.send.assert_not_called()
+        self._assert_private_output()
+
+    def test_offline_and_live_modes_are_mutually_exclusive(self) -> None:
+        with self.assertRaises(SystemExit) as stopped:
+            self._main([], argv=["--live", "--offline"])
+        self.assertEqual(stopped.exception.code, 2)
+        self.send.assert_not_called()
 
     def test_bad_origin_is_rejected_before_credentials_can_be_sent(self) -> None:
         with patch.dict(os.environ, {"GARMIN_PERSONAL_API_BASE_URL": "https://example.invalid"}):

@@ -32,6 +32,10 @@ Versioning. No release has been published.
 - Owner-reported successful ten-probe API batch, disjoint search pages,
   known-race details and marker format, endpoint response categories and broad
   token-timing band, with projection limits and remaining Phase 1 gates explicit.
+- Read-only offline projection of three saved API responses, using verified
+  public catalog/VO2/zones field names without credential access or HTTP calls.
+- Synthetic FIT scaling, altitude-component, lap/timer and UTC/local timestamp
+  findings, kept separate from unresolved real-file validation.
 
 ### Fixed
 
@@ -39,3 +43,5 @@ Versioning. No release has been published.
   while retaining raw ANT metadata, without inferring armband identity.
 - FIT notebook field-name projection handles unmapped numeric keys without
   mixing them into string sorting; a synthetic decoder regression covers it.
+- Cadence normalization guidance now doubles the fractional contribution too,
+  without adding a parser or changing the owner's executed notebook.

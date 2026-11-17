@@ -25,6 +25,7 @@ from requests import PreparedRequest, Response, Session
 ROOT = Path(__file__).resolve().parents[1]
 ORIGIN = "https://personal.connectapi.garmin.com"
 SEARCH_PATH = "/activitylist-service/activities/search/activities"
+PROJECTION = "Allowlisted fields, first array items and a depth limit of four."
 SAFE_FIELDS = frozenset(
     {
         "data",
@@ -39,6 +40,7 @@ SAFE_FIELDS = frozenset(
         "typeId",
         "parentTypeId",
         "typeKey",
+        "key",
         "parent",
         "lastUpdateDate",
         "uploadedDate",
@@ -84,6 +86,16 @@ SAFE_FIELDS = frozenset(
         "status",
         "zones",
         "heartRateZones",
+        "trainingMethod",
+        "restingHeartRateUsed",
+        "lactateThresholdHeartRateUsed",
+        "maxHeartRateUsed",
+        "restingHrAutoUpdateUsed",
+        "zone1Floor",
+        "zone2Floor",
+        "zone3Floor",
+        "zone4Floor",
+        "zone5Floor",
         "sport",
         "sportType",
         "sportTypeId",
@@ -98,6 +110,11 @@ SAFE_FIELDS = frozenset(
         "date",
         "value",
         "vo2Max",
+        "generic",
+        "cycling",
+        "rowing",
+        "vo2MaxValue",
+        "vo2MaxPreciseValue",
     }
 )
 
@@ -299,13 +316,18 @@ def _token_facts(token: str) -> dict[str, object]:
     }
 
 
-def _private_folder(text: str) -> Path:
+def _private_directory(text: str) -> Path:
     selected = text.strip().strip('"')
     if not selected:
         raise DiscoveryError("A protected directory must be selected.")
     folder = Path(selected).expanduser().resolve(strict=True)
     if not folder.is_dir() or folder.is_relative_to(ROOT.resolve()):
         raise DiscoveryError("Choose an existing protected directory outside the repository.")
+    return folder
+
+
+def _private_folder(text: str) -> Path:
+    folder = _private_directory(text)
     cache = folder / "bearer-token.json"
     if not cache.resolve().is_relative_to(folder):
         raise DiscoveryError("Bearer cache must remain in the selected private directory.")
@@ -320,6 +342,26 @@ def _private_folder(text: str) -> Path:
         if _number(expiry) is None:
             raise DiscoveryError("Existing bearer cache expiry is invalid; inspect it privately.")
     return folder
+
+
+def inspect_saved(text: str) -> dict[str, object]:
+    """Project three fixed saved responses without credentials, writes or HTTP."""
+    folder = _private_directory(text)
+    observations: dict[str, object] = {}
+    for name in ("activity_types", "vo2_max", "zones"):
+        source = folder / f"{name}.json"
+        if source.is_symlink() or source.resolve().parent != folder:
+            raise DiscoveryError("Linked response file rejected; inspection stopped.")
+        if not source.is_file():
+            raise DiscoveryError(f"Required saved response {name}.json is missing.")
+        payload: object = json.loads(source.read_text(encoding="utf-8"))
+        observations[name] = {"shape": shape(payload)}
+    return {
+        "mode": "offline_saved_responses",
+        "projection": PROJECTION,
+        "probes": observations,
+        "limits": "Saved JSON only; HTTP status, freshness, units and full schema are unverified.",
+    }
 
 
 def _execute(
@@ -377,7 +419,7 @@ def run(folder: Path, day: date, race_id: str, api_key: str) -> dict[str, object
         "completed": completed,
         "has_http_errors": any(item["status"] == "http_error" for item in observations.values()),
         "token_timing_unverified_claims": token_facts,
-        "projection": "Allowlisted fields, first array items and a depth limit of four.",
+        "projection": PROJECTION,
         "probes": observations,
         "page_id_relation": "unavailable"
         if first is None or second is None
@@ -387,17 +429,30 @@ def run(folder: Path, day: date, race_id: str, api_key: str) -> dict[str, object
     }
 
 
+def _print_report(report: Mapping[str, object]) -> None:
+    print("Shareable structural report (copy only this JSON, not the entered inputs):")
+    print(json.dumps(report, indent=2, sort_keys=True))
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Prompt for private inputs and display only the final structural report."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument(
         "--live", action="store_true", help="Prompt to confirm the fixed ten-GET batch."
     )
+    modes.add_argument(
+        "--offline", action="store_true", help="Inspect three saved JSON responses without HTTP."
+    )
     args = parser.parse_args(argv)
-    if not args.live:
-        print("No requests sent. Use --live to review and confirm the bounded discovery batch.")
+    if not args.live and not args.offline:
+        print("No requests sent. Use --offline for saved JSON or --live to confirm discovery.")
         return 0
     try:
+        if args.offline:
+            report = inspect_saved(input("Existing protected api-check-* response directory: "))
+            _print_report(report)
+            return 0
         if (
             DEFAULT_BASE_URL != ORIGIN
             or os.environ.get("GARMIN_PERSONAL_API_BASE_URL", ORIGIN).rstrip("/") != ORIGIN
@@ -424,8 +479,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Cancelled; no requests sent.")
             return 0
         report = run(folder, day, race_id, key)
-        print("Shareable structural report (copy only this JSON, not the entered inputs):")
-        print(json.dumps(report, indent=2, sort_keys=True))
+        _print_report(report)
         print(
             "JSON responses are in a new api-check-* subfolder of your selected private directory."
         )

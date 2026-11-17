@@ -250,6 +250,33 @@ The owner-run four-sample structural reports are recorded below; real-file
 timing and unit semantics still require verification. No parser performance
 comparison was performed.
 
+## Synthetic FIT representation checks
+
+A further SDK 21.221.0 probe encoded an entirely synthetic activity in memory:
+records, lap/session summaries, timer events and paired activity timestamps.
+CRC integrity and fresh-stream default/raw decodes passed. These checks verify
+SDK representations, not real-watch recording behavior or measurement accuracy.
+No original FIT file or notebook output was read for this probe.
+
+| Area | Verified synthetic behavior and implementation consequence |
+| --- | --- |
+| Cadence | Default decoding preserves integer cadence and separately scales fractional cadence by 1/128. In the synthetic example, cadence 80 and fractional cadence 0.5 represent 80.5 cycles/min, or `2 * (80 + 0.5) = 161` steps/min under the running stride interpretation. Double the fractional contribution too; do not rescale an already decoded fraction |
+| Running summary alias | With `sport=running`, lap/session `avg_running_cadence` aliases the base `avg_cadence` value; it is not already doubled to steps/min. The separate `avg_fractional_cadence` is preserved. Real-file/UI comparison remains pending |
+| Altitude | The profile specifies metres with scale/offset handling; default decoding reconstructs the synthetic legacy and enhanced heights. Apply no second scale/offset to decoded values |
+| Component expansion | Default decoding adds `enhanced_altitude` from a legacy `altitude` field even when enhanced altitude was not separately encoded. A projected enhanced field is not proof of an independently recorded sensor value, greater physical precision or corrected elevation |
+| Laps and duration | A synthetic distance-triggered lap decodes as `lap_trigger=distance`; elapsed and timer durations decode to seconds and retain the intentionally different values. This does not verify the watch's auto-lap setting or actual pause handling |
+| Timer events | Synthetic timer `start`/`stop_all` events retain their order and timestamps; data for a manual trigger expands to `timer_trigger=manual`. Auto-pause, missing/repeated events and real recordings remain unverified |
+| UTC/local time | Default `timestamp` is a UTC-aware datetime, while activity `local_timestamp` remains an integer in FIT local-epoch seconds. The paired raw timestamps preserve the deliberately encoded offset. Do not treat the local integer as Unix time or obtain its offset from the computer timezone; real-file offset/DST behavior remains pending |
+
+The raw comparison disabled scale/offset application, datetime/type conversion,
+subfield/component expansion and heart-rate merging. The SDK rejects disabled
+scaling or components while heart-rate merging remains enabled; this was a probe
+configuration error, not corrupt FIT data. Default decoding was unaffected.
+
+These are one-time, pinned-SDK feasibility observations, not a production parser
+or a replacement for the four real-file timing/unit checks. No SDK source,
+profile table or FIT fixture is added to the repository.
+
 ## Approved private date policies
 
 The owner reports that the armband is not shown in Garmin's activity sensor
@@ -419,7 +446,7 @@ conclusions only.
 | Zones | Nonempty array with a string `sport` field; other fields were omitted by the allowlist. Zone/profile mapping and per-sport semantics remain pending; actual values stay private |
 | FIT messages | Four owner-run projections received; common fields/groups and variable timestamp intervals recorded above; watch recording setting unverified |
 | FIT sensors | Protocol aliases checked synthetically and owner armband BLE `heart_rate` projection confirmed; exact source/model identity and HR-sample provenance remain unresolved |
-| FIT timing and units | Cadence scaling, elevation source/precision, lap and pause events, and offset handling |
+| FIT timing and units | Synthetic SDK scaling, altitude-component, lap/timer and timestamp representations are verified above. Real-file cadence comparison, elevation source/accuracy, pause/lap behavior and offset/DST handling remain pending |
 | HTTP behavior | All ten helper-paced probes succeeded; no HTTP error was reported. Live error formats and rate-limit/header behavior remain unobserved, not synthetically established |
 | Token timing | `exp` and `iat` present; unverified claims yield a 1-48-hour lifetime band. Exact lifetime, token/cache reuse and refresh behavior are not established by this report |
 | Terms | Owner confirms terms, private-folder permissions and private expiry-date configuration; no copied terms or dates; no external reminder required |
@@ -568,6 +595,52 @@ requesting raw files, echoing unknown dynamic keys or rerunning the live batch.
 Any further local projection or request work requires a separately agreed plan.
 The remaining checklist and both Proposed ADRs stay open; no ingestion is
 authorized by this report.
+
+### Offline review of the saved API responses
+
+The public Swagger schemas were checked again, without authentication or
+executing any API operation. The missing projections have documented field
+names outside the original allowlist:
+
+| Public schema | Allowlisted structural fields |
+| --- | --- |
+| `SimpleActivityTypeDTO` | `key`, `parent` |
+| `MaxMetDTO` / `VO2MaxDTO` | `generic`, `cycling`, `rowing` wrappers; `calendarDate`, `vo2MaxValue`, `vo2MaxPreciseValue` |
+| `HeartRateZonesDTO` | `sport`, `trainingMethod`, `restingHeartRateUsed`, `lactateThresholdHeartRateUsed`, `maxHeartRateUsed`, `restingHrAutoUpdateUsed`, `zone1Floor` through `zone5Floor` |
+
+These are public schema facts, not confirmation that every field is populated
+in the owner's saved responses. In particular, do not assume the VO2 `generic`
+wrapper is a verified running-specific measurement. Zone fields describe a
+sport configuration, not a history of zone/profile changes.
+
+The existing helper now has an owner-run, read-only `--offline` mode. From the
+repository root:
+
+```powershell
+& 'C:\Python314\python.exe' -m uv run --isolated --no-project --no-env-file --python 3.14 --with garmin-connect-personal-api-python==1.0.0 python notebooks\api_discovery.py --offline
+```
+
+Select the existing protected **`api-check-*` response subdirectory**, not its
+parent containing the bearer cache. The mode reads only `activity_types.json`,
+`vo2_max.json` and `zones.json`; it does not read `.env` or the token cache,
+authenticate, make HTTP requests, or write/overwrite files. Directory
+containment and each source path are checked; linked response files and targets
+outside the selected directory are rejected. Keep using the protected directory:
+the helper does not establish its ACLs.
+
+Only the final structural JSON should be shared. The expanded allowlist still
+omits scalar values and unknown keys, inspects only first array items and limits
+depth to four. Offline output is explicitly labelled as saved-response
+inspection and makes no live HTTP-status or freshness claim. Missing/malformed
+files stop with a sanitized error rather than emitting a partial success report.
+`--offline` and `--live` cannot be combined; no mode still sends no requests.
+
+Five new synthetic checks cover the omitted wrapper projection, credential-free
+fixed-file access and unchanged contents, invalid/missing/linked inputs,
+sanitized errors and mode exclusivity. All 17 API checks and strict typing pass.
+The existing live request budget, pacing, confirmation and error-stop behavior
+remain covered. No additional Garmin batch or Phase 2 ingestion is authorized.
+The owner-run offline report and remaining real-file conclusions are pending.
 
 ### Windows private-folder setup (owner-run)
 
