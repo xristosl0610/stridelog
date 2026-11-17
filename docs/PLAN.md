@@ -108,14 +108,14 @@ Sizes: S is 1 to 3 focused sessions, M is 4 to 8 and L is 8 to 15, where a sessi
 
 | Option | How it works | Strengths | Weaknesses | Verdict |
 | --- | --- | --- | --- | --- |
-| **Connect Personal API** (official, launched October 2026) | A personal API key is exchanged for a 24-hour bearer token on `personal.connectapi.garmin.com` | Supported by Garmin; no password or MFA (multi-factor sign-in) handling; no login rate limit; original FIT files; wellness data | New (v1.0); covers only part of Garmin's data; the key expires after 30 to 365 days and must be renewed by hand; rate limits undocumented | **Chosen** |
+| **Connect Personal API** (official, launched October 2026) | A personal API key is exchanged for a bearer token on `personal.connectapi.garmin.com`; about 24 hours is the earlier research expectation, not a verified account expiry | Supported by Garmin; no password or MFA (multi-factor sign-in) handling; no login rate limit; original FIT files; wellness data | New (v1.0); covers only part of Garmin's data; the key expires after 30 to 365 days and must be renewed by hand; rate limits undocumented | **Chosen** |
 | Unofficial Connect API (`python-garminconnect` 0.3.x, used by GarminDB) | Imitates the sign-in of Garmin's web and mobile apps | All data Garmin shows, including training status, race predictor, gear and personal records | Reverse-engineered and fragile: it broke in March 2026 when Garmin added bot protection, after which the `garth` sign-in library was deprecated. About 4 sign-ins in 40 minutes trigger an HTTP 429 error that also locks you out of the official Garmin app for a while. It is unclear whether it complies with Garmin's terms of use | Rejected |
 | Garmin account data export | Garmin account > Data management > Export your data | Complete one-off archive | Manual, slow, not incremental | Contingency only |
 | FIT files copied from the watch | Copy the activity folder over USB | Works offline, no cloud dependency | Manual; no Garmin summaries or wellness data | Fallback importer (Should) |
 
 ### 3.2 What the Personal API provides
 
-- **Access**: create a key in Garmin Connect on the web, under Settings > Personal API Key. Accept the terms and choose a lifetime of 30, 90, 180 or 365 days. The key is shown only once. It is exchanged for a bearer token, a JWT valid for about 24 hours. There is no refresh token, so you exchange the key again when the token expires.
+- **Access**: create a key in Garmin Connect on the web, under Settings > Personal API Key. Accept the terms and choose a lifetime of 30, 90, 180 or 365 days. The key is shown only once. It is exchanged for a bearer JWT. Earlier research expects about 24 hours, but the account-issued expiry remains unverified; use the issued `exp` claim rather than a hard-coded lifetime. There is no refresh token, so you exchange the key again when the token expires.
 - **Scope**: read-only, and data is only fetched on request (pull-only). Only documented paths respond; everything else returns 404.
 - **Official client**: `garmin-connect-personal-api-python` 1.0.0 (Apache-2.0 license, Python 3.12 or newer). It caches tokens and includes a `gc-personal` command-line tool, which Phase 1 uses before any project code exists.
 
@@ -829,16 +829,18 @@ Tracking:
 [1.5 / #21](https://github.com/xristosl0610/stridelog/issues/21).
 Initial [findings](research/personal-api-findings.md) verify client 1.0.0 help
 in an isolated uv tool environment and correct differences between published
-and upstream interfaces. No authenticated API calls, SDK execution or real FIT
-inspection have occurred. The owner confirmed reviewing the Personal API and
-FIT SDK terms and approved the planned local use. Private verification will use
-owner-run commands, with only structural conclusions shared. Local permissions,
-the expiry reminder, representative samples and the remaining Section 13 checks
-are still pending; both ADRs remain proposed.
+and upstream interfaces. The owner confirmed reviewing the Personal API and
+FIT SDK terms and approved planned local use. The owner reports successful
+private-folder permission setup and one authenticated activity-search command
+using an ignored local `.env`. The assistant has not read credentials or raw
+responses, and no SDK execution or real FIT inspection has occurred.
+Private verification uses owner-run commands, with only structural conclusions
+shared. The expiry reminder, response structures, representative samples and
+the remaining Section 13 checks are still pending; both ADRs remain proposed.
 
 Tasks:
 
-- [ ] 1.1 Read the Personal API terms and create a key with a 365-day lifetime. Save it outside the repository, as a key file in your user profile or an environment variable, and add the expiry date to your calendar. Never paste the key into chats, issues or code.
+- [ ] 1.1 Read the Personal API terms and create a key with a 365-day lifetime. Save it outside the repository, or in the ignored local `.env` selected by the owner, and add the expiry date to your calendar. Terms and the first authenticated check are owner-confirmed; the private expiry reminder remains unconfirmed. Never paste the key into chats, issues or code.
 - [x] 1.2 Explore the official command-line interface in an isolated tool environment: `python -m uv tool run --from garmin-connect-personal-api-python==1.0.0 gc-personal --help`. Activities and download help also pass; authenticated exploration remains in 1.3. No project code or dependencies added.
 - [ ] 1.3 Work through the checklist in Section 13 (activities, wellness, FIT contents, API behavior).
 - [ ] 1.4 Inspect 4 representative FIT files in a notebook with outputs stripped: one from the wrist-only period, one from the chest-strap period, one from the COROS period, and one race.

@@ -1,13 +1,14 @@
 # Personal API discovery findings
 
-Status: Phase 1 in progress; public-source checks only.
+Status: Phase 1 in progress; public-source checks and owner-reported authentication success.
 Verified: 2026-11-17.
 Milestone: [Phase 1 - Discovery spike](https://github.com/xristosl0610/stridelog/milestone/2).
 
 ## Evidence and scope
 
-This document records independently checked public facts, not authenticated
-results. No key, token cache, account response or real FIT file was read.
+This document separates independently checked public facts from owner-reported
+private checks. The assistant has not read any key, token cache, account
+response or real FIT file.
 Neither ADR-0002 nor ADR-0004 is ready for acceptance. Ingestion remains blocked
 until the [Phase 1 checklist](../PLAN.md#13-phase-1-verification-checklist) is
 resolved.
@@ -62,7 +63,10 @@ there is no need to install an unpinned Git revision.
 ## Documented API behavior, not account observations
 
 The official overview confirms the host `personal.connectapi.garmin.com` and
-an API-key-to-token POST exchange. Actual token lifetime is not verified.
+an API-key-to-token POST exchange. The plan's approximately 24-hour lifetime is
+an earlier research expectation, not an account observation established here.
+The account-issued expiry is still unverified; cache decisions must use the
+issued `exp` claim, not a hard-coded 24 hours.
 
 The current Swagger page lists both activity types and daily VO2 max. Earlier
 plan notes describing them as missing from the specification are superseded.
@@ -141,9 +145,12 @@ only structural conclusions will be shared.
 
 ## Private verification remaining
 
-Except for the owner-confirmed terms review, the checks below remain pending.
-Keep personal values and raw evidence outside Git and chat; publish structural
-conclusions only.
+The owner confirms terms review, private-folder permission setup and a
+successful one-activity search command with released client 1.0.0. This verifies
+the basic authentication/request path only: response contents, pagination,
+history, other endpoints and token timing remain unverified. Keep personal
+values and raw evidence outside Git and chat; publish structural conclusions
+only.
 
 | Checklist area | Required evidence |
 | --- | --- |
@@ -157,16 +164,17 @@ conclusions only.
 | FIT timing and units | Cadence scaling, elevation source/precision, lap and pause events, and offset handling |
 | HTTP behavior | Status/structure observations and any naturally encountered rate-limit headers under paced discovery |
 | Token timing | Locally checked lifetime only; never publish tokens, payloads or exact expiry |
-| Terms | Owner confirms review and approval of planned local use; no copied terms. Local permissions and private expiry reminder still need confirmation |
+| Terms | Owner confirms review and approval of planned local use and private-folder permission setup; no copied terms. Private expiry reminder still needs confirmation |
 | SDK feasibility | Terms approved; strict-typing evaluation and a synthetic encoding/decoding check remain pending |
 
 ### Next local session
 
 1. Confirm the expiry reminder is managed privately. The owner has already
    confirmed reviewing the Personal API and FIT SDK terms for planned local use.
-2. Agree a private working directory outside the repository and a credential
-   source without sharing the key. Restrict key, cache and response-file ACLs.
-   Do not search the machine for credentials or use a key as a CLI argument.
+2. Keep using the protected folder outside the repository for the cache and
+   responses. The owner selected an ignored local `.env` for credentials.
+   Review that file's permissions locally too. Do not search the machine for
+   credentials or use a key as a CLI argument.
 3. Run only explicitly agreed discovery requests, no more than one per second,
    with all response/error output kept in that private location. Inspect locally,
    not through tools that would return raw data into the conversation.
@@ -202,12 +210,48 @@ before saving credentials or responses. A unique fresh directory avoids
 retaining explicit grants from an existing folder. These ACLs do not isolate
 data from administrators, corporate monitoring or backups.
 
-In the same terminal, `Test-Path Env:GARMIN_PERSONAL_API_KEY` can confirm that
-the variable exists without printing its value. This does not prove that the
-key is nonempty or valid; do not print it to check. Never include a key value in
-a terminal command, screenshot or pasted output.
-
 Check the key expiry privately in Garmin Connect and add a calendar reminder
 to renew it at least 14 days before expiry. Do not share the date, ACL listing
 or folder path; report only whether setup and the reminder are complete.
-No authenticated discovery command should run until this setup is confirmed.
+
+### Credential loading and the first private request (owner-run)
+
+The local `.env` needs only `GARMIN_PERSONAL_API_KEY=your_actual_key_here`,
+with the placeholder replaced privately. Never replace an existing key with the
+empty value from `.env.example`. The local `.env` is ignored and untracked;
+do not force-add it. File permissions still matter even when Git ignores it.
+
+PowerShell does not automatically load `.env`. Therefore
+`Test-Path Env:GARMIN_PERSONAL_API_KEY` can return `False` even when the file is
+correct. Use uv's explicit `--env-file .env` option instead; no manual export or
+new dotenv dependency is needed. The child process gets the variable without
+changing the parent PowerShell environment.
+
+Run from the repository root in the terminal that holds `$private`. The
+explicit Python path below is the verified global installation on this Windows
+setup; on another machine use the approved Python installation containing uv.
+VS Code's activated project Python does not necessarily contain uv, and the
+older uv executable on PATH is not the verified installation.
+
+```powershell
+& 'C:\Python314\python.exe' -m uv run --isolated --no-project --env-file .env `
+  --with garmin-connect-personal-api-python==1.0.0 `
+  gc-personal --quiet `
+  --bearer-token-cache-file "$private\bearer-token.json" `
+  activities --start 0 --limit 1 `
+  1> "$private\activities.json" `
+  2> "$private\request-errors.txt"
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Output "API check succeeded."
+} else {
+    Write-Output "API check failed. Inspect request-errors.txt locally; do not paste it."
+}
+```
+
+The owner reports success with this command. An earlier invocation failed
+locally because the project Python could not import uv; that was not a Garmin
+authentication failure. The assistant verified the global uv version (0.13.9)
+and isolated client version (1.0.0) without loading `.env` or contacting Garmin.
+No project dependencies changed. Further requests should remain explicitly
+agreed, paced and private.
