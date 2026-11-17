@@ -976,8 +976,11 @@ Tasks:
 
 **Acceptance criteria**:
 
-Core implementation and synthetic checks are complete; the following full-account
-checks remain owner-run and unverified. No assistant tool performs account ingestion.
+Core implementation and synthetic checks are complete. The owner confirmed a
+completed full sync and a completed immediate repeat with no changed documents or
+new originals. The earlier safely interrupted run was followed by successful
+completion. This is owner-reported acceptance, not independent inspection of
+archive completeness or private logs. No assistant tool performs account ingestion.
 
 - The first full download finishes without manual intervention.
 - A second `sync` straight afterwards downloads nothing new except the re-fetched recent days.
@@ -987,6 +990,17 @@ checks remain owner-run and unverified. No assistant tool performs account inges
 ### Phase 3: Storage (size M, release v0.1.0)
 
 **Goal**: a clean, typed SQLite database that can be rebuilt from the raw archive.
+
+**Approved implementation plan**: two cohesive PRs: (1) typed measurement and
+user-annotation models/migrations, SDK parsing, SI/UTC/local-offset normalization,
+conservative HR-source provenance and synthetic encoding tests; (2) JSON mappings,
+idempotent offline rebuild preserving annotations, private data-quality reporting,
+documentation and acceptance tests. The owner approved `garmin-fit-sdk==21.221.0`
+as a runtime dependency. No analytics or web dependencies are included. ADR-0004
+stays Proposed until parser validation, including the remaining owner spot checks.
+Final acceptance is owner-run: repeated rebuild equality, every run imported or
+reported, ten spot checks and recorded runtime (target under five minutes).
+No additional discovery-helper batch is required.
 
 Tasks:
 
