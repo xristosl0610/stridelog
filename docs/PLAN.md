@@ -830,8 +830,11 @@ Tracking:
 Initial [findings](research/personal-api-findings.md) verify client 1.0.0 help
 in an isolated uv tool environment and correct differences between published
 and upstream interfaces. No authenticated API calls, SDK execution or real FIT
-inspection have occurred. Account terms, representative samples and the remaining
-Section 13 checks are still pending; both ADRs remain proposed.
+inspection have occurred. The owner confirmed reviewing the Personal API and
+FIT SDK terms and approved the planned local use. Private verification will use
+owner-run commands, with only structural conclusions shared. Local permissions,
+the expiry reminder, representative samples and the remaining Section 13 checks
+are still pending; both ADRs remain proposed.
 
 Tasks:
 

@@ -134,10 +134,16 @@ dependency installation without vendoring or bundling; this is not a legal
 compatibility determination. No SDK installation, execution, parser comparison
 or sample inspection was performed in this check.
 
+The owner subsequently confirmed reviewing the Personal API and FIT SDK terms
+and approved the planned local use. This records the owner's confirmation, not
+an independent legal assessment. Private discovery will use owner-run commands;
+only structural conclusions will be shared.
+
 ## Private verification remaining
 
-All rows below remain pending. Keep personal values and raw evidence outside
-Git and chat; publish structural conclusions only.
+Except for the owner-confirmed terms review, the checks below remain pending.
+Keep personal values and raw evidence outside Git and chat; publish structural
+conclusions only.
 
 | Checklist area | Required evidence |
 | --- | --- |
@@ -151,13 +157,13 @@ Git and chat; publish structural conclusions only.
 | FIT timing and units | Cadence scaling, elevation source/precision, lap and pause events, and offset handling |
 | HTTP behavior | Status/structure observations and any naturally encountered rate-limit headers under paced discovery |
 | Token timing | Locally checked lifetime only; never publish tokens, payloads or exact expiry |
-| Terms | Owner review of account terms and intended local storage/public code; no copied terms |
-| SDK feasibility | Terms approval, strict-typing evaluation and a synthetic encoding/decoding check |
+| Terms | Owner confirms review and approval of planned local use; no copied terms. Local permissions and private expiry reminder still need confirmation |
+| SDK feasibility | Terms approved; strict-typing evaluation and a synthetic encoding/decoding check remain pending |
 
 ### Next local session
 
-1. Confirm the Personal API terms allow the intended use and that the expiry
-   reminder is managed privately. Confirm the SDK terms before its evaluation.
+1. Confirm the expiry reminder is managed privately. The owner has already
+   confirmed reviewing the Personal API and FIT SDK terms for planned local use.
 2. Agree a private working directory outside the repository and a credential
    source without sharing the key. Restrict key, cache and response-file ACLs.
    Do not search the machine for credentials or use a key as a CLI argument.
@@ -169,3 +175,39 @@ Git and chat; publish structural conclusions only.
 5. Prepare an output-free sample-inspection notebook when the SDK/local workflow
    is agreed. Accept the ADRs only after the remaining evidence supports them,
    then obtain a separate Phase 2 implementation-plan approval.
+
+### Windows private-folder setup (owner-run)
+
+Run this in your own PowerShell terminal, not through an assistant tool. It
+creates a new folder outside the repository and restricts its inherited access.
+No key is read and no request is made. Keep the same terminal for later steps.
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$root = Join-Path $HOME '.stridelog'
+New-Item -ItemType Directory -Path $root -Force | Out-Null
+$private = Join-Path $root ('discovery-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $private | Out-Null
+$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+icacls $private /inheritance:r /grant:r "*${sid}:(OI)(CI)F"
+if ($LASTEXITCODE -ne 0) { throw 'Private-folder permission setup failed; stop here.' }
+icacls $private
+if ($LASTEXITCODE -ne 0) { throw 'Private-folder permission verification failed.' }
+```
+
+Inspect the final ACL locally: the newly created directory should grant only
+your current user's SID full control, inherited by files and subdirectories,
+with no broad user/group access. If that is not the result, stop and resolve it
+before saving credentials or responses. A unique fresh directory avoids
+retaining explicit grants from an existing folder. These ACLs do not isolate
+data from administrators, corporate monitoring or backups.
+
+In the same terminal, `Test-Path Env:GARMIN_PERSONAL_API_KEY` can confirm that
+the variable exists without printing its value. This does not prove that the
+key is nonempty or valid; do not print it to check. Never include a key value in
+a terminal command, screenshot or pasted output.
+
+Check the key expiry privately in Garmin Connect and add a calendar reminder
+to renew it at least 14 days before expiry. Do not share the date, ACL listing
+or folder path; report only whether setup and the reminder are complete.
+No authenticated discovery command should run until this setup is confirmed.
