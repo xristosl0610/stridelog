@@ -1,6 +1,5 @@
 """Synthetic configuration, migration and local command acceptance checks."""
 
-import os
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
@@ -26,24 +25,7 @@ from stridelog.diagnostics import doctor_report
 from stridelog.errors import StridelogError
 
 runner = CliRunner()
-
-
-@pytest.fixture(autouse=True)
-def private_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Prevent any test from inspecting the owner's .env or credential files."""
-
-    def synthetic_checkout(_directory: Path) -> Path:
-        return tmp_path / "checkout"
-
-    for key in os.environ:
-        if key.startswith("STRIDELOG_") or key == "GARMIN_PERSONAL_API_KEY":
-            monkeypatch.delenv(key)
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
-    monkeypatch.setattr("stridelog.config.REPOSITORY_ROOT", tmp_path / "checkout")
-    monkeypatch.setattr("stridelog.config.find_checkout_root", synthetic_checkout)
-    monkeypatch.setenv("STRIDELOG_DATA_DIR", str(tmp_path / "private"))
-    monkeypatch.setenv("GARMIN_PERSONAL_API_KEY", "synthetic-key-not-a-credential")
+pytestmark = pytest.mark.usefixtures("private_environment")
 
 
 def test_dotenv_precedence_and_private_dates(

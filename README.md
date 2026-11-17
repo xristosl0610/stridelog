@@ -3,9 +3,10 @@
 Local-first running analytics for Garmin data. Planned features include a
 rebuildable local archive, transparent running metrics and an interactive web app.
 
-**Status:** Phase 2 foundations: automatic `.env` settings, operational database
-migrations, `doctor` and `status`. Sync, analytics and the web app are not
-available yet. See the [plan](docs/PLAN.md).
+**Status:** Phase 2 core raw ingestion implemented: `.env` settings, migrations,
+`doctor`, `status` and resumable `sync`. Full private archive acceptance remains
+owner-run. FIT parsing, analytics, `import-fit` and the web app are not available
+yet. See the [plan](docs/PLAN.md).
 
 ## Development quickstart
 
@@ -54,6 +55,42 @@ outside the checkout. Restrict its permissions and those of `.env` yourself,
 especially Windows ACLs; directory creation mode alone does not establish a
 Windows ACL. Diagnostics never print the key, private dates or storage paths.
 The optional armband date is validated now but classification remains Phase 3.
+
+## Raw sync
+
+Your existing `.env` key and private dates are sufficient; no additional
+credentials or PowerShell exports are needed.
+
+```powershell
+uv run stridelog sync --dry-run
+uv run stridelog sync
+uv run stridelog status
+```
+
+`sync` initializes storage and resumes saved progress automatically. The first
+run starts at the plan's January 2025 baseline. Repeat the same command after
+an interruption. Use `--since YYYY-MM-DD` to reconcile explicit older history;
+repeat that option too when resuming an explicit reconciliation.
+
+- Running keys and their catalog descendants are included. Override defaults
+  with `STRIDELOG_RUNNING_ACTIVITY_TYPES` as a JSON array if needed.
+- Daily summaries, sleep and HRV use one-day requests; null HRV is preserved.
+  Current zones and the type catalog are also archived.
+- Defaults look back seven activity days and three wellness days before the last
+  completed day, inclusively. Only recent known details are refreshed; arbitrary
+  old edits require an explicit older `--since`. Original ZIPs are never replaced.
+- HTTP attempts are paced by at least one second, including retries. The initial
+  archive can take substantial time: three wellness requests per calendar day,
+  plus activity requests. No fixed completion-time estimate is guaranteed.
+- `--dry-run` describes scope without opening stored cursors, creating storage,
+  loading the credential file, authenticating or making requests. It does not
+  predict exact request counts.
+
+Only aggregate completion counts are printed. On checksum/cache corruption,
+inspect and repair locally; never share files or raw errors. See the
+[archive and recovery contract](docs/architecture.md#raw-archive-policy).
+Run an initial sync, a repeat sync and an interruption/resume locally before
+Phase 2 acceptance. No assistant-run account ingestion is claimed.
 
 ## Privacy
 

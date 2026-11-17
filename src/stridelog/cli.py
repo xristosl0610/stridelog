@@ -1,17 +1,21 @@
 """Thin command-line boundary; configuration and storage values stay private."""
 
+from datetime import date
 from importlib.metadata import version
 from typing import Annotated
 
 import typer
 from alembic.util.exc import CommandError as MigrationError
 from pydantic import ValidationError
+from pydantic_settings import SettingsError
 from sqlalchemy.exc import SQLAlchemyError
 
 from stridelog.config import Settings
 from stridelog.db.engine import database_status
 from stridelog.diagnostics import doctor_report
 from stridelog.errors import StridelogError
+from stridelog.garmin import open_personal_source
+from stridelog.ingest.sync import synchronize
 
 app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
 
@@ -39,6 +43,8 @@ def _settings() -> Settings:
     except ValidationError as error:
         fields = sorted({str(item["loc"][0]) for item in error.errors(include_input=False)})
         raise StridelogError(f"Invalid configuration fields: {', '.join(fields)}.") from None
+    except SettingsError, UnicodeError:
+        raise StridelogError("Invalid configuration format; check the ignored .env.") from None
 
 
 def _failure(error: Exception) -> None:
@@ -82,3 +88,41 @@ def status() -> None:
         typer.echo(f"Archived files: {snapshot.raw_files}")
         typer.echo(f"Sync runs: {snapshot.sync_runs}")
         typer.echo(f"Last sync: {snapshot.last_run_status or 'never'}")
+
+
+@app.command()
+def sync(
+    since: Annotated[
+        str | None, typer.Option(help="Reconcile history since an inclusive YYYY-MM-DD.")
+    ] = None,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Describe scope without network or storage writes.")
+    ] = False,
+) -> None:
+    """Archive running activities and daily wellness, resuming durable progress."""
+    try:
+        settings = _settings()
+        selected: date | None = None
+        if since is not None:
+            try:
+                selected = date.fromisoformat(since)
+                if selected.isoformat() != since or selected > date.today():
+                    raise ValueError
+            except ValueError:
+                raise StridelogError("--since must be YYYY-MM-DD and not in the future.") from None
+        if dry_run:
+            typer.echo("Plan: running activities, daily summaries, sleep, HRV and current zones.")
+            typer.echo(
+                "History: explicit --since reconciliation."
+                if selected is not None
+                else "History: saved progress and lookbacks, or the initial archive baseline."
+            )
+            typer.echo("No network or storage writes; existing cursors are not opened.")
+            return
+        typer.echo("Sync started; requests are paced. Press Ctrl+C to pause safely.")
+        report = synchronize(settings, lambda: open_personal_source(settings), since=selected)
+    except (StridelogError, SQLAlchemyError, MigrationError, OSError) as error:
+        _failure(error)
+    else:
+        typer.echo(f"Updated raw documents: {report.updated_documents}")
+        typer.echo(f"Original ZIPs downloaded: {report.downloaded_originals}")

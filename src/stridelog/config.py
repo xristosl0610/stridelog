@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     activity_lookback_days: int = Field(default=7, ge=0)
     wellness_lookback_days: int = Field(default=3, ge=0)
     request_interval_s: float = Field(default=1.0, ge=1.0, allow_inf_nan=False)
+    running_activity_types: tuple[str, ...] = Field(
+        default=("running", "trail_running", "treadmill_running", "track_running"),
+        min_length=1,
+    )
     api_key_expires_on: date | None = Field(default=None, repr=False)
     hr_armband_from: date | None = Field(default=None, repr=False)
     garmin_personal_api_key: SecretStr | None = Field(
@@ -71,3 +75,11 @@ class Settings(BaseSettings):
     def empty_key(cls, value: object) -> object:
         """Treat an unfilled example setting as missing, not as a credential."""
         return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("running_activity_types")
+    @classmethod
+    def activity_type_keys(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        """Accept explicit taxonomy keys, never empty or ambiguous fragments."""
+        if any(not key or not key.isascii() or not key.replace("_", "").isalnum() for key in value):
+            raise ValueError("Activity types must be nonempty ASCII taxonomy keys.")
+        return value
