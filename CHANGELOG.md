@@ -7,6 +7,12 @@ Versioning. No release has been published.
 
 ### Added
 
+- Phase 2 automatic `.env` settings, strict private-date and storage validation,
+  local `doctor`/`status` commands and expiry warnings without authentication.
+- SQLAlchemy operations tables and packaged Alembic initialization, SQLite WAL,
+  foreign keys and synthetic migration/persistence/privacy checks.
+- Final saved-response schema evidence and approved timeboxed discovery closeout:
+  Personal API accepted for raw ingestion; FIT parser decision remains Phase 3.
 - Python 3.14 package with a version-only CLI and synthetic smoke/privacy tests.
 - Locked development environment, strict typing configuration, linting and coverage.
 - Privacy hooks, Windows/Linux CI configuration and dependency update automation.

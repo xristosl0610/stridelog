@@ -1,6 +1,6 @@
 # Personal API discovery findings
 
-Status: Phase 1 in progress; public-source checks and owner-reported structural projections.
+Status: Phase 1 timebox closed with owner-approved deferrals; Phase 2 approved.
 Verified: 2026-11-17.
 Milestone: [Phase 1 - Discovery spike](https://github.com/xristosl0610/stridelog/milestone/2).
 
@@ -9,9 +9,10 @@ Milestone: [Phase 1 - Discovery spike](https://github.com/xristosl0610/stridelog
 This document separates independently checked public facts from owner-reported
 private checks. The assistant has not read any key, token cache, raw account
 response or real FIT file.
-Neither ADR-0002 nor ADR-0004 is ready for acceptance. Ingestion remains blocked
-until the [Phase 1 checklist](../PLAN.md#13-phase-1-verification-checklist) is
-resolved.
+ADR-0002 is accepted specifically for raw ingestion. ADR-0004 remains Proposed
+until Phase 3 parser validation. The [approved closeout](#approved-discovery-closeout)
+supersedes historical discovery gates below; unchecked observations remain
+explicitly unverified, not retroactively passed.
 
 Sources:
 
@@ -452,7 +453,7 @@ conclusions only.
 | Terms | Owner confirms terms, private-folder permissions and private expiry-date configuration; no copied terms or dates; no external reminder required |
 | SDK feasibility | Terms approved, synthetic checks and strict notebook/harness typing pass; four local structural inspections complete; real-file timing/units remain pending |
 
-### Next local session
+### Historical discovery procedure (superseded by approved closeout)
 
 1. Keep the actual key expiration in the already-configured private
    `STRIDELOG_API_KEY_EXPIRES_ON` setting; no calendar integration is required.
@@ -640,7 +641,37 @@ fixed-file access and unchanged contents, invalid/missing/linked inputs,
 sanitized errors and mode exclusivity. All 17 API checks and strict typing pass.
 The existing live request budget, pacing, confirmation and error-stop behavior
 remain covered. No additional Garmin batch or Phase 2 ingestion is authorized.
-The owner-run offline report and remaining real-file conclusions are pending.
+The owner-run offline report is recorded below. Real-file interpretation
+conclusions remain deferred, not passed.
+
+### Approved discovery closeout
+
+The owner supplied the read-only saved-response projection and approved ending
+the discovery timebox and implementing Phase 2 in two cohesive PRs. No further
+discovery helper or live rerun is required.
+
+| Saved response | Observed first-item structure |
+| --- | --- |
+| Activity types | Nonempty array; `key` is a string. No `parent` in that first item; this does not establish every item's hierarchy |
+| VO2 max | Nonempty array; `generic` contains string `calendarDate`/`sport` and numeric `vo2MaxPreciseValue`/`vo2MaxValue`, with other fields omitted; `cycling` is null |
+| Zones | Nonempty array; numeric `maxHeartRateUsed`, `restingHeartRateUsed` and `zone1Floor` through `zone5Floor`; string `sport`/`trainingMethod`; boolean `restingHrAutoUpdateUsed`; null `lactateThresholdHeartRateUsed` |
+
+This is offline schema evidence only, not a live freshness/status check or full
+schema/unit verification. No scalar values were supplied. The `generic` wrapper
+does not prove a running-specific VO2 measurement. Zone configuration is not
+historical profile data.
+
+ADR-0002 is accepted for uninterpreted raw ingestion using page size 20, at least
+one second between attempts and one-day wellness requests. Full-history
+coverage, exact limits, natural HTTP/retry behavior, token reuse and edit-marker
+semantics transfer to Phase 2 acceptance. Recent detail refreshes do not detect
+arbitrary old edits; older reconciliation needs an explicit older `--since`.
+
+ADR-0004 stays Proposed until Phase 3. Real-file cadence/elevation/timing,
+offset/DST handling and HR identity/provenance checks transfer there. Original
+ZIPs remain untouched and no SDK production dependency is added now.
+The historical pending/gating statements above describe evidence at those
+earlier checkpoints; they do not revoke this explicitly approved transition.
 
 ### Windows private-folder setup (owner-run)
 

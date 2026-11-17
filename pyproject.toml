@@ -5,7 +5,13 @@ description = "Local-first running analytics for Garmin data"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.14"
-dependencies = ["typer>=0.29.1,<0.30"]
+dependencies = [
+    "alembic>=1,<2",
+    "pydantic>=2,<3",
+    "pydantic-settings>=2,<3",
+    "sqlalchemy>=2,<3",
+    "typer>=0.29.1,<0.30",
+]
 
 [dependency-groups]
 dev = [
