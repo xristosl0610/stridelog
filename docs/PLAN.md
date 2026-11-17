@@ -898,6 +898,13 @@ the selected day only. Token claims establish only a broad 1-48-hour band, not
 exactly 24 hours or key expiration. These findings do not establish full history,
 page/range maxima or the remaining FIT timing/units. No additional request batch,
 ADR acceptance or Phase 2 ingestion is authorized by this report.
+The next approved slice adds read-only offline inspection of three already-saved
+API responses, using field names verified against public schemas. No new Garmin
+requests or credential access is needed. A separate synthetic SDK probe verifies
+cadence/fraction scaling, component-derived enhanced altitude, lap/timer decoding
+and mixed UTC/local timestamp representations; it does not validate real-file
+sensor accuracy, watch settings or DST behavior. The owner-run offline report
+and remaining real-file checks are still pending.
 
 Tasks:
 
@@ -1310,9 +1317,9 @@ from observed limits, and mark unverified checks explicitly.
 - [x] Message types and record-field presence in four owner-run projections; all have variable decoded timestamp intervals.
 - [ ] Actual watch recording setting (smart recording or every second); variable intervals alone do not prove the setting.
 - [x] `device_info` entries in each sample, including the known-armband sample despite the Garmin UI omission: local-only for wrist, ANT+ for strap/race and Bluetooth LE for armband. Exact identity/HR provenance remains unverified. Protocol aliases are synthetically verified, and the revised owner armband projection confirms BLE `heart_rate` without manufacturer/product. The private date rule is not FIT evidence.
-- [ ] Where altitude comes from and how good it is; whether Garmin's corrected elevation appears only in the JSON.
-- [ ] Cadence units. FIT stores running cadence per leg, so steps per minute is double the value plus the fractional part.
-- [ ] Laps (auto-lap distance), timer events for pauses, and the local time offset.
+- [ ] Where altitude comes from and how good it is; whether Garmin's corrected elevation appears only in the JSON. Synthetic decoding confirms metre scaling and that SDK component expansion can produce `enhanced_altitude` from legacy altitude; projected field presence does not establish an independent measurement or corrected elevation.
+- [ ] Cadence units. Under FIT's running stride interpretation, normalize decoded cadence as `2 * (cadence + fractional_cadence)` steps/min, not `2 * cadence + fractional_cadence`. Synthetic decoding verifies fractional scaling and the undoubled lap/session running alias; real-file/UI comparison remains pending.
+- [ ] Laps (auto-lap distance), timer events for pauses, and the local time offset. Synthetic distance-triggered laps, timer events and paired UTC/local timestamps decode correctly; actual watch behavior and offset/DST handling remain pending. Default activity `local_timestamp` is an integer, unlike the UTC-aware `timestamp`.
 
 **API behavior and terms**
 
