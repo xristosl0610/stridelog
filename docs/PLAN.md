@@ -883,8 +883,10 @@ device entries, strap/race include ANT+ entries, and armband includes a Bluetoot
 LE entry without manufacturer/product. This does not establish exact sensor
 identity or HR-sample provenance. The protocol-specific device-type projection
 gap is now corrected and synthetically tested, and strict notebook/SDK boundary
-typing passes. A revised owner-run armband projection and real timing/units
-checks remain pending; no real files were inspected by the assistant.
+typing passes. The revised owner-run armband projection now confirms a BLE
+`heart_rate` device entry without manufacturer/product; it does not prove COROS
+identity or HR-sample provenance. Real timing/units checks remain pending; no
+real files were inspected by the assistant.
 
 Tasks:
 
@@ -1296,7 +1298,7 @@ from observed limits, and mark unverified checks explicitly.
 
 - [x] Message types and record-field presence in four owner-run projections; all have variable decoded timestamp intervals.
 - [ ] Actual watch recording setting (smart recording or every second); variable intervals alone do not prove the setting.
-- [x] `device_info` entries in each sample, including the known-armband sample despite the Garmin UI omission: local-only for wrist, ANT+ for strap/race and Bluetooth LE for armband. Exact identity/HR provenance remains unverified. Protocol aliases were omitted from the original reports and are now synthetically verified in the corrected notebook; a revised owner projection is pending. The private date rule is not FIT evidence.
+- [x] `device_info` entries in each sample, including the known-armband sample despite the Garmin UI omission: local-only for wrist, ANT+ for strap/race and Bluetooth LE for armband. Exact identity/HR provenance remains unverified. Protocol aliases are synthetically verified, and the revised owner armband projection confirms BLE `heart_rate` without manufacturer/product. The private date rule is not FIT evidence.
 - [ ] Where altitude comes from and how good it is; whether Garmin's corrected elevation appears only in the JSON.
 - [ ] Cadence units. FIT stores running cadence per leg, so steps per minute is double the value plus the fractional part.
 - [ ] Laps (auto-lap distance), timer events for pauses, and the local time offset.
