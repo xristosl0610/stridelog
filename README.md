@@ -4,9 +4,9 @@ Local-first running analytics for Garmin data. Planned features include a
 rebuildable local archive, transparent running metrics and an interactive web app.
 
 **Status:** Phase 2 core raw ingestion implemented: `.env` settings, migrations,
-`doctor`, `status` and resumable `sync`. Full private archive acceptance remains
-owner-run. FIT parsing, analytics, `import-fit` and the web app are not available
-yet. See the [plan](docs/PLAN.md).
+`doctor`, `status` and resumable `sync`; the owner confirmed full and repeat sync
+completion. Phase 3 typed storage and FIT parsing are in progress. Rebuild commands,
+analytics, `import-fit` and the web app are not available yet. See the [plan](docs/PLAN.md).
 
 ## Development quickstart
 

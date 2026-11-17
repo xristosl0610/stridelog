@@ -8,6 +8,7 @@ requires-python = ">=3.14"
 dependencies = [
     "alembic>=1,<2",
     "garmin-connect-personal-api-python==1.0.0",
+    "garmin-fit-sdk==21.221.0",
     "pydantic>=2,<3",
     "pydantic-settings>=2,<3",
     "requests>=2.32,<3",

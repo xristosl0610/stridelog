@@ -4,7 +4,9 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from alembic import command
 from alembic.autogenerate import compare_metadata
+from alembic.config import Config
 from alembic.migration import MigrationContext
 from pydantic import ValidationError
 from sqlalchemy import text
@@ -26,6 +28,34 @@ from stridelog.errors import StridelogError
 
 runner = CliRunner()
 pytestmark = pytest.mark.usefixtures("private_environment")
+
+
+def test_upgrade_from_operations_keeps_sync_progress() -> None:
+    data_dir = Settings().data_dir
+    data_dir.mkdir(parents=True)
+    engine = database_engine(data_dir)
+    try:
+        with engine.begin() as connection:
+            configuration = Config()
+            location = Path(__file__).parents[2] / "src" / "stridelog" / "db" / "migrations"
+            configuration.set_main_option("script_location", str(location).replace("%", "%%"))
+            configuration.attributes["connection"] = connection
+            command.upgrade(configuration, "0001_operations")
+            connection.execute(
+                text(
+                    "INSERT INTO sync_cursor (dataset, through_date, updated_at_utc) "
+                    "VALUES ('activities', '2030-01-01', '2030-01-02T00:00:00+00:00')"
+                )
+            )
+        initialize_database(data_dir)
+        with Session(engine) as session:
+            assert session.get(SyncCursor, "activities") is not None
+            assert (
+                compare_metadata(MigrationContext.configure(session.connection()), Base.metadata)
+                == []
+            )
+    finally:
+        engine.dispose()
 
 
 def test_dotenv_precedence_and_private_dates(
