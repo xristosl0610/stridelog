@@ -23,17 +23,18 @@ from stridelog.errors import StridelogError
 from stridelog.ingest.archive import RawStore
 from stridelog.ingest.locking import sync_lock
 from stridelog.ingest.sync import synchronize
+from stridelog.synthetic import running_fit
 
 pytestmark = pytest.mark.usefixtures("private_environment")
 
 
 def original_zip() -> bytes:
-    """ZIP contents are synthetic opaque bytes, never real health recordings."""
+    """ZIP contents are an SDK-encoded synthetic activity, never owner data."""
     buffer = BytesIO()
     with ZipFile(buffer, "w") as archive:
         archive.writestr(
             ZipInfo("synthetic.fit", date_time=(2025, 1, 1, 0, 0, 0)),
-            b"synthetic-not-an-actual-fit",
+            running_fit(),
         )
     return buffer.getvalue()
 
@@ -90,7 +91,9 @@ class FakeSource:
         self.wellness_calls.append((dataset, day))
         if self.fail_wellness == (dataset, day):
             raise StridelogError("Synthetic wellness interruption.")
-        return None if dataset == "hrv" else {"data": [], "revision": self.revision}
+        if dataset == "daily":
+            return {"data": [], "revision": self.revision}
+        return [] if dataset == "sleep" else None
 
     def zones(self) -> JsonValue:
         return [{"sport": "running"}]

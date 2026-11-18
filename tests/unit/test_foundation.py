@@ -22,7 +22,7 @@ from stridelog.db.engine import (
     database_status,
     initialize_database,
 )
-from stridelog.db.models import Base, RawFile, SyncCursor, SyncRun
+from stridelog.db.models import ActivityAnnotation, Base, RawFile, SyncCursor, SyncRun
 from stridelog.diagnostics import doctor_report
 from stridelog.errors import StridelogError
 
@@ -54,6 +54,36 @@ def test_upgrade_from_operations_keeps_sync_progress() -> None:
                 compare_metadata(MigrationContext.configure(session.connection()), Base.metadata)
                 == []
             )
+    finally:
+        engine.dispose()
+
+
+def test_steady_run_migration_preserves_existing_annotations() -> None:
+    data_dir = Settings().data_dir
+    data_dir.mkdir(parents=True)
+    engine = database_engine(data_dir)
+    try:
+        with engine.begin() as connection:
+            configuration = Config()
+            location = Path(__file__).parents[2] / "src" / "stridelog" / "db" / "migrations"
+            configuration.set_main_option("script_location", str(location).replace("%", "%%"))
+            configuration.attributes["connection"] = connection
+            command.upgrade(configuration, "0003_analytics")
+            connection.execute(
+                text(
+                    "INSERT INTO activity_annotation "
+                    "(activity_id, is_race_override, race_name, official_time_s, "
+                    "exclude_from_stats, hr_invalid, notes) "
+                    "VALUES (7, 1, 'Synthetic race', 1200, 0, 0, 'Synthetic note')"
+                )
+            )
+        initialize_database(data_dir)
+        with Session(engine) as session:
+            annotation = session.get(ActivityAnnotation, 7)
+            assert annotation is not None
+            assert annotation.is_steady_run is False
+            assert annotation.race_name == "Synthetic race"
+            assert annotation.notes == "Synthetic note"
     finally:
         engine.dispose()
 

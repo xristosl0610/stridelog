@@ -2,7 +2,7 @@
 
 from datetime import date
 from importlib.metadata import version
-from typing import Annotated
+from typing import Annotated, Literal
 
 import typer
 from alembic.util.exc import CommandError as MigrationError
@@ -10,6 +10,9 @@ from pydantic import ValidationError
 from pydantic_settings import SettingsError
 from sqlalchemy.exc import SQLAlchemyError
 
+from stridelog.activity_annotations import set_race_details, set_steady_run
+from stridelog.analysis import analyze as run_analysis
+from stridelog.athlete import save_profile
 from stridelog.config import Settings
 from stridelog.db.engine import database_status
 from stridelog.diagnostics import doctor_report
@@ -20,6 +23,10 @@ from stridelog.rebuild import quality_report
 from stridelog.rebuild import rebuild as rebuild_archive
 
 app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
+profile_app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
+activity_app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
+app.add_typer(profile_app, name="profile")
+app.add_typer(activity_app, name="activity")
 
 
 @app.callback(invoke_without_command=True)
@@ -123,11 +130,193 @@ def sync(
             return
         typer.echo("Sync started; requests are paced. Press Ctrl+C to pause safely.")
         report = synchronize(settings, lambda: open_personal_source(settings), since=selected)
+        rebuild_report = rebuild_archive(settings)
+        if rebuild_report.failed_activities or rebuild_report.failed_documents:
+            raise StridelogError(
+                "Sync completed but local rebuild reported failures; inspect reports locally."
+            )
+        analysis_report = run_analysis(settings)
     except (StridelogError, SQLAlchemyError, MigrationError, OSError) as error:
         _failure(error)
     else:
         typer.echo(f"Updated raw documents: {report.updated_documents}")
         typer.echo(f"Original ZIPs downloaded: {report.downloaded_originals}")
+        typer.echo(
+            "Activities analyzed: "
+            f"{analysis_report.calculated_activities} calculated, "
+            f"{analysis_report.skipped_activities} unchanged."
+        )
+        typer.echo(f"Daily analytics rows: {analysis_report.calculated_days}")
+
+
+@app.command()
+def analyze() -> None:
+    """Recalculate changed activity metrics and refresh daily analytics offline."""
+    try:
+        report = run_analysis(_settings())
+    except (StridelogError, SQLAlchemyError, MigrationError, OSError) as error:
+        _failure(error)
+    else:
+        typer.echo(
+            "Activities analyzed: "
+            f"{report.calculated_activities} calculated, {report.skipped_activities} unchanged."
+        )
+        typer.echo(f"Daily analytics rows: {report.calculated_days}")
+
+
+@activity_app.command("steady-run")
+def annotate_steady_run(
+    activity_id: Annotated[int, typer.Argument(min=1)],
+    is_steady_run: Annotated[
+        bool, typer.Option("--steady/--not-steady", help="Mark whether the run was steady.")
+    ] = True,
+) -> None:
+    """Set or clear the manual steady-run annotation used for decoupling."""
+    try:
+        settings = _settings()
+        set_steady_run(settings, activity_id, is_steady_run)
+        report = run_analysis(settings)
+    except (StridelogError, SQLAlchemyError, MigrationError, OSError) as error:
+        _failure(error)
+    else:
+        typer.echo(
+            "Steady-run annotation saved; analytics refreshed "
+            f"({report.calculated_activities} activities recalculated)."
+        )
+
+
+@activity_app.command("race")
+def annotate_race(
+    activity_id: Annotated[int, typer.Argument(min=1)],
+    is_race_override: Annotated[
+        bool | None, typer.Option("--race/--not-race", help="Override the Garmin race flag.")
+    ] = None,
+    race_name: Annotated[str | None, typer.Option(help="Optional local race name.")] = None,
+    official_time_s: Annotated[
+        float | None, typer.Option(help="Optional official result time in seconds.")
+    ] = None,
+    use_garmin: Annotated[
+        bool, typer.Option("--from-garmin", help="Clear local race overrides and details.")
+    ] = False,
+) -> None:
+    """Set a local race override or result without printing personal values."""
+    try:
+        settings = _settings()
+        set_race_details(
+            settings,
+            activity_id,
+            is_race_override=is_race_override,
+            race_name=race_name,
+            official_time_s=official_time_s,
+            use_garmin=use_garmin,
+        )
+        report = run_analysis(settings)
+    except (StridelogError, SQLAlchemyError, MigrationError, OSError) as error:
+        _failure(error)
+    else:
+        typer.echo(
+            "Race annotation saved; analytics refreshed "
+            f"({report.calculated_activities} activities recalculated)."
+        )
+
+
+@profile_app.command("set")
+def set_profile(
+    effective_from: str,
+    max_hr_bpm: Annotated[float, typer.Option(help="Dated maximum heart rate in bpm.")],
+    resting_hr_bpm: Annotated[float, typer.Option(help="Dated resting heart rate in bpm.")],
+    sex_for_trimp: Annotated[
+        Literal["female", "other"],
+        typer.Option(help="TRIMP constant selection; choose the applicable formula."),
+    ],
+    threshold_hr_bpm: Annotated[
+        float | None, typer.Option(help="Optional lactate-threshold heart rate in bpm.")
+    ] = None,
+    zone_floors: Annotated[
+        str | None,
+        typer.Option(help="Optional five comma-separated zone floors in bpm."),
+    ] = None,
+) -> None:
+    """Save a dated athlete profile without printing its personal values."""
+    try:
+        try:
+            day = date.fromisoformat(effective_from)
+        except ValueError:
+            raise StridelogError("--effective-from must be YYYY-MM-DD.") from None
+        if day.isoformat() != effective_from:
+            raise StridelogError("--effective-from must be YYYY-MM-DD.")
+        try:
+            floors = (
+                None
+                if zone_floors is None
+                else tuple(float(value.strip()) for value in zone_floors.split(","))
+            )
+        except ValueError:
+            raise StridelogError("--zone-floors must be five comma-separated numbers.") from None
+        settings = _settings()
+        save_profile(
+            settings,
+            day,
+            max_hr_bpm=max_hr_bpm,
+            resting_hr_bpm=resting_hr_bpm,
+            threshold_hr_bpm=threshold_hr_bpm,
+            sex_for_trimp=sex_for_trimp,
+            hr_zone_floors_bpm=floors,
+        )
+        report = run_analysis(settings)
+    except (StridelogError, SQLAlchemyError, MigrationError, OSError) as error:
+        _failure(error)
+    else:
+        typer.echo(
+            "Athlete profile saved; analytics refreshed "
+            f"({report.calculated_activities} activities recalculated)."
+        )
+
+
+@profile_app.command("setup")
+def setup_profile() -> None:
+    """Interactively save a dated profile without echoing personal values."""
+    typer.echo(
+        "Enter the date these values became valid, not the date they were observed. "
+        "Inputs are hidden; leave optional fields blank."
+    )
+    effective_from = typer.prompt("Effective date (YYYY-MM-DD)", hide_input=True)
+    maximum = typer.prompt("Maximum heart rate (bpm)", hide_input=True)
+    resting = typer.prompt("Resting heart rate (bpm)", hide_input=True)
+    selection = (
+        typer.prompt(
+            "TRIMP constants (female or other; see metrics documentation)", hide_input=True
+        )
+        .strip()
+        .lower()
+    )
+    threshold = typer.prompt(
+        "Optional threshold heart rate (bpm)", default="", show_default=False, hide_input=True
+    )
+    zones = typer.prompt(
+        "Optional five zone floors (comma-separated bpm)",
+        default="",
+        show_default=False,
+        hide_input=True,
+    )
+    try:
+        max_hr_bpm = float(maximum)
+        resting_hr_bpm = float(resting)
+        threshold_hr_bpm = float(threshold) if threshold.strip() else None
+    except ValueError:
+        _failure(StridelogError("Heart-rate values must be numbers."))
+        return
+    if selection not in ("female", "other"):
+        _failure(StridelogError("TRIMP constants must be female or other."))
+        return
+    set_profile(
+        effective_from,
+        max_hr_bpm,
+        resting_hr_bpm,
+        selection,
+        threshold_hr_bpm,
+        zones if zones.strip() else None,
+    )
 
 
 @app.command()

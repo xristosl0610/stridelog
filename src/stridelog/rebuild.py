@@ -316,7 +316,7 @@ def _rebuild(settings: Settings, session: Session) -> tuple[int, int, int]:
     for entry in entries:
         if entry.dataset in {"activities", "originals"} and ".versions/" not in entry.relative_path:
             bundles[entry.source_id or ""].append(entry)
-    if not bundles:
+    if not entries:
         raise StridelogError("No archived activities found; finish sync before rebuilding.")
     for model in MEASUREMENTS:
         session.execute(delete(model))

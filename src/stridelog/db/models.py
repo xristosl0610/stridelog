@@ -3,7 +3,7 @@
 from datetime import UTC, date, datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, CheckConstraint, Date, ForeignKey, Integer, String
+from sqlalchemy import JSON, CheckConstraint, Date, ForeignKey, Integer, String, false
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -155,6 +155,7 @@ class ActivityAnnotation(Base):
     official_time_s: Mapped[float | None]
     exclude_from_stats: Mapped[bool] = mapped_column(default=False)
     hr_invalid: Mapped[bool] = mapped_column(default=False)
+    is_steady_run: Mapped[bool] = mapped_column(default=False, server_default=false())
     notes: Mapped[str | None]
 
 
@@ -214,6 +215,39 @@ class ZoneSnapshot(Base):
     lactate_threshold_hr_bpm: Mapped[float | None]
     raw_path: Mapped[str]
     observed_at_utc: Mapped[str]
+
+
+class AthleteProfile(Base):
+    """User-entered analytics inputs, effective from a local calendar date."""
+
+    __tablename__ = "athlete_profile"
+
+    effective_from: Mapped[date] = mapped_column(Date, primary_key=True)
+    max_hr_bpm: Mapped[float | None]
+    resting_hr_bpm: Mapped[float | None]
+    threshold_hr_bpm: Mapped[float | None]
+    sex_for_trimp: Mapped[str | None]
+    hr_zone_floors_bpm: Mapped[list[float] | None] = mapped_column(JSON)
+
+
+class ActivityAnalytics(Base):
+    """Cached derived metrics, invalidated by source/profile/signature changes."""
+
+    __tablename__ = "activity_analytics"
+
+    activity_id: Mapped[int] = mapped_column(primary_key=True)
+    input_signature: Mapped[str] = mapped_column(String(64))
+    algorithm_version: Mapped[int]
+    metrics: Mapped[dict[str, object]] = mapped_column(JSON)
+
+
+class DailyAnalytics(Base):
+    """Fully recomputed daily metric series."""
+
+    __tablename__ = "daily_analytics"
+
+    local_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    metrics: Mapped[dict[str, object]] = mapped_column(JSON)
 
 
 class QualityIssue(Base):

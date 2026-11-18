@@ -5,6 +5,21 @@ Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Phase 4 local running analytics, dated athlete profiles, annotations,
+  cached activity metrics, daily fitness and recovery series, and automatic
+  post-sync analysis, with synthetic tests and documented metric limits.
+- Output-free validation notebooks with pace displays, per-activity
+  best-effort comparisons, and separately labelled lap-based marathon
+  estimates when sampled efforts are unavailable.
+
+### Changed
+
+- Distance interpolation for splits and best efforts permits gaps up to ten
+  seconds; other metrics retain the five-second limit. Incomplete streams no
+  longer produce misleading final partial splits.
+
 ## [0.1.0] - 2026-11-18
 
 ### Added

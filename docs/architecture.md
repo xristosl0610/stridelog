@@ -99,4 +99,5 @@ are withheld, and dependency logging is suppressed only during source use.
   inputs. Invalid FIT is copied to quarantine, never moved out of the archive.
 
 See [ADRs](adr/0001-record-architecture-decisions.md) for accepted and provisional
-decisions. Detailed schema is documented now; metrics documentation remains Phase 4.
+decisions. Detailed schema and the initial metric definitions are in
+[`data-model.md`](data-model.md) and [`metrics.md`](metrics.md).

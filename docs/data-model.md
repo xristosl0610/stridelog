@@ -2,7 +2,8 @@
 
 Phase 3 measurements share the operational SQLite database. Migration
 `0002_measurements` preserves sync cursors, runs and the checksum manifest.
-No analytics/derived-load tables are introduced before Phase 4.
+Phase 4 migration `0003_analytics` adds dated athlete inputs and derived metric
+caches; analytics rows are never treated as source data.
 
 ## Tables and provenance
 
@@ -13,18 +14,24 @@ No analytics/derived-load tables are introduced before Phase 4.
 | `activity_lap` | Activity ID, lap index | UTC start/end, distance, elapsed/timer durations, average HR/cadence, intensity and trigger |
 | `activity_sensor` | Activity ID, sensor index | Deduplicated protocol/type/manufacturer/product/name metadata, never serial numbers |
 | `timer_event` | Activity ID, event index | UTC timestamp, timer event type and trigger |
-| `activity_annotation` | Activity ID | Race override/name/time, exclusion, invalid-HR flag and notes |
+| `activity_annotation` | Activity ID | Race override/name/time, exclusion, invalid-HR flag, explicit steady-run flag and notes |
 | `daily_wellness` | Local date | Resting HR, steps, stress average and Body Battery high/low |
 | `sleep_night` | Local date | Total/deep/light/REM/awake seconds and optional score |
 | `hrv_night` | Local date | Optional last-night average in milliseconds |
 | `zone_snapshot` | Input checksum, sport | Training method, five HR floors, max/resting/threshold HR, raw path and observation timestamp |
 | `quality_issue` | Dataset, source key, code | Fixed-code private import failures and quality warnings |
+| `athlete_profile` | Effective local date | Optional heart-rate inputs, TRIMP constant selection and explicitly dated zone floors |
+| `activity_analytics` | Activity ID | Derived metrics and source/profile signature used to invalidate cached per-run results |
+| `daily_analytics` | Local date | Recomputed load and wellness time series |
 
 Wellness rows carry raw path and SHA-256. Activity provenance covers summary,
 details and original ZIP. Zone snapshots retain content history, not an invented
 historical effective date. User annotations deliberately have no foreign key to
 rebuildable activities: an unavailable/corrupt activity must not delete user input.
 Do not treat absence of a parsed activity as permission to remove its annotation.
+Athlete profiles are also user-owned. Per-activity analytics deliberately survive
+the measurement-table replacement so source signatures can avoid recomputing
+unchanged runs; `analyze` removes cache rows for activities no longer present.
 
 ## Normalization
 
