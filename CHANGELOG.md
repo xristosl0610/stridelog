@@ -5,6 +5,8 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-18
+
 ### Added
 
 - Phase 4 local running analytics, dated athlete profiles, annotations,
