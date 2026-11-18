@@ -1,15 +1,17 @@
 # Changelog
 
 All notable changes are recorded here, following Keep a Changelog and Semantic
-Versioning. No release has been published.
+Versioning.
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-11-18
 
 ### Added
 
 - Phase 3 typed measurement/user-annotation migration and FIT parser boundary,
   synthetic Encoder fixtures, normalized units and conservative HR provenance.
-  Final real-archive parser acceptance remains pending.
+  Owner-reported real-archive rebuild and spot-check acceptance is complete.
 - Offline transactional `rebuild` with annotation/operations/raw preservation,
   checksum provenance, repeat-result fingerprints and recorded runtime.
 - Private `dq-report`, per-input failure reasons, immutable-original-preserving
@@ -21,14 +23,14 @@ Versioning. No release has been published.
   profiles, recent lookbacks and explicit older-history reconciliation.
 - Atomic/checksummed archival, immutable original ZIPs and JSON content versions,
   durable progress, process locking, interruption recovery and no-I/O dry-run.
-- Fake-source and real-client/mocked-transport acceptance checks; no live account
-  ingestion or FIT interpretation is included.
+- Fake-source and real-client/mocked-transport acceptance checks; tests do not
+  access live accounts or real FIT data.
 - Phase 2 automatic `.env` settings, strict private-date and storage validation,
   local `doctor`/`status` commands and expiry warnings without authentication.
 - SQLAlchemy operations tables and packaged Alembic initialization, SQLite WAL,
   foreign keys and synthetic migration/persistence/privacy checks.
 - Final saved-response schema evidence and approved timeboxed discovery closeout:
-  Personal API accepted for raw ingestion; FIT parser decision remains Phase 3.
+  Personal API accepted for raw ingestion; FIT parsing accepted in Phase 3.
 - Python 3.14 package with a version-only CLI and synthetic smoke/privacy tests.
 - Locked development environment, strict typing configuration, linting and coverage.
 - Privacy hooks, Windows/Linux CI configuration and dependency update automation.

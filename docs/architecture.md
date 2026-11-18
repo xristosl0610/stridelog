@@ -1,7 +1,7 @@
 # Architecture
 
-Status: raw ingestion and typed storage implemented; real-archive parser acceptance
-remains owner-run. This document distinguishes intended architecture from
+Status: raw ingestion and typed storage implemented; real-archive acceptance
+reported by the owner. This document distinguishes intended architecture from
 implemented behavior; the [project plan](PLAN.md) is the detailed roadmap.
 
 ## Implemented
@@ -89,7 +89,8 @@ are withheld, and dependency logging is suppressed only during source use.
 ## Open decisions
 
 - Optional `import-fit` remains a Should task, not part of completed core sync.
-- Final FIT SDK ADR acceptance and v0.1.0 wait for owner-run rebuild/spot checks.
+- FIT SDK ADR-0004 is accepted for offline parsing with documented limitations;
+  individual quality warnings and untested real-watch edge cases remain open.
 - External map tiles conflict with Garmin-only outgoing requests and can reveal
   viewed locations. Resolve explicitly before Phase 6; no external maps yet.
 - User annotations intentionally have no foreign key into rebuildable activity
