@@ -3,11 +3,10 @@
 Local-first running analytics for Garmin data. Planned features include a
 rebuildable local archive, transparent running metrics and an interactive web app.
 
-**Status:** Phase 2 core raw ingestion implemented: `.env` settings, migrations,
-`doctor`, `status` and resumable `sync`; the owner confirmed full and repeat sync
-completion. Phase 3 typed storage, offline `rebuild` and `dq-report` are implemented;
-owner-reported real-archive acceptance is complete. Analytics, `import-fit` and the
-web app are not available yet. See the [plan](docs/PLAN.md).
+**Status:** Phase 3 typed storage and v0.1.0 are complete. Phase 4 analytics are
+under implementation; the Phase 4 work adds local metric calculation, dated
+athlete profiles and automatic analysis after sync. Optional `import-fit` remains
+open, and the API/web app are not available yet. See the [plan](docs/PLAN.md).
 
 ## Development quickstart
 
@@ -69,9 +68,10 @@ uv run stridelog sync
 uv run stridelog status
 ```
 
-`sync` initializes storage and resumes saved progress automatically. The first
-run starts at the plan's January 2025 baseline. Repeat the same command after
-an interruption. Use `--since YYYY-MM-DD` to reconcile explicit older history;
+`sync` initializes storage and resumes saved progress automatically. After a
+successful archive sync, it rebuilds typed measurements and refreshes analytics
+offline. The first run starts at the plan's January 2025 baseline. Repeat the
+same command after an interruption. Use `--since YYYY-MM-DD` to reconcile explicit older history;
 repeat that option too when resuming an explicit reconciliation.
 
 - Running keys and their catalog descendants are included. Override defaults
@@ -94,14 +94,16 @@ inspect and repair locally; never share files or raw errors. See the
 Run an initial sync, a repeat sync and an interruption/resume locally before
 Phase 2 acceptance. No assistant-run account ingestion is claimed.
 
-## Offline typed rebuild
+## Rebuild and analytics
 
-After sync, rebuild the measurement tables without any Garmin requests:
+Sync runs both operations below automatically after a successful archive. Run
+them separately for offline recovery or validation:
 
 ```powershell
 uv run stridelog rebuild
 uv run stridelog rebuild
 uv run stridelog dq-report
+uv run stridelog analyze
 ```
 
 `rebuild` upgrades the local schema automatically. It replaces only rebuildable
@@ -123,8 +125,8 @@ Inspect reports locally, not in Git or chat. Invalid/unsupported FIT inputs get
 a checksum-named ZIP copy in `quarantine`; immutable originals are never moved,
 overwritten or extracted. Each ZIP must contain exactly one FIT member, at most
 128 MiB uncompressed. Missing/checksum-mismatched raw files are explicitly reported.
-The archive must contain at least one activity; an empty/uninitialized archive is
-an error rather than an apparently successful empty rebuild.
+An uninitialized archive is an error. A valid archive with no activities can
+still rebuild wellness data.
 
 HR labels distinguish recognized model evidence, date assumptions and unknown
 sources. BLE/ANT+ categories alone do not identify armband/chest wear; missing
@@ -134,6 +136,28 @@ for units, timestamp handling, mapping limits and quality-screen thresholds.
 The observed HRV response is null; it stays null. Populated HRV schemas and other
 unsupported JSON shapes are reported, not guessed. Sleep score remains null
 because no verified field was observed. Current zones are not applied retroactively.
+
+Run `uv run stridelog profile setup` to enter a dated profile interactively.
+The prompts hide input; maximum/resting HR and a TRIMP constant selection are
+required, while threshold HR and five increasing zone floors are optional.
+Choose an effective date only when the values are known to apply; earlier
+activities do not inherit them. Repeat setup for later changes. The values are
+saved in local SQLite, not environment variables, and analytics are refreshed.
+See [metric definitions](docs/metrics.md) for formulas and limitations.
+Automatic Garmin profile sourcing is deferred; profile values must be entered
+explicitly with an effective date. Aerobic decoupling is calculated only for
+runs you explicitly mark steady with
+`stridelog activity steady-run <activity-id> --steady`; use `--not-steady` to
+clear the annotation. Use `stridelog activity race <activity-id> --race
+--race-name "Local race" --official-time-s 1500` to override the Garmin race
+flag and record an official result; `--not-race` excludes it, and
+`--from-garmin` clears local overrides and details.
+
+The six output-free validation notebooks require `uv sync --locked --group
+notebooks` and the project's `.venv` kernel. They read only the local SQLite
+database. Their loader does not parse `.env` or load credentials; set
+`STRIDELOG_DATA_DIR` in the notebook kernel environment if you use a non-default
+data directory. Treat generated outputs as private and never commit or share them.
 
 Phase 3 acceptance was reported by the owner after repeated local rebuilds, a
 runtime below the five-minute target and ten Garmin Connect comparisons. The

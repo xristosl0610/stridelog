@@ -4,9 +4,9 @@ Local-first running analytics for your Garmin data. stridelog mirrors your runs 
 
 | Item | Value |
 | --- | --- |
-| Status | Phase 0 complete, including workspace rename. Phase 1 approved; public-source discovery recorded, private verification pending. |
+| Status | Phase 3 complete and v0.1.0 released. Phase 4 approved and in progress. |
 | Owner | Christos Lathourakis |
-| Last updated | 2026-11-17 |
+| Last updated | 2026-11-18 |
 | Repository | `stridelog` on your personal GitHub account (public, MIT), created in Phase 0 |
 
 **How to use this plan.** This plan will change as the project goes on. Each phase becomes a GitHub milestone and each task becomes an issue. Before a phase starts, we write a short implementation plan for it and you approve it, as `.github/copilot-instructions.md` requires. Important decisions are recorded as ADRs (architecture decision records, Section 9.5). When a decision changes, the ADR and this plan are updated in the same pull request.
@@ -431,21 +431,23 @@ Only current views are replaced. Originals and prior JSON versions are preserved
 
 ### 5.8 Command-line interface
 
-`--version`, local `doctor [--initialize]`, raw `sync [--since DATE] [--dry-run]`
-and aggregate operational `status` are implemented.
-`doctor` checks presence rather than authenticating credentials;
-missing configuration/storage fails readiness. `--initialize` is the explicit
-offline migration/bootstrap operation. The remaining commands below are planned;
-activity/data-quality counts require later parsed tables.
+`--version`, local `doctor [--initialize]`, resumable `sync`, aggregate
+operational `status`, offline `rebuild`, `analyze`, dated `profile set` and
+`dq-report` are implemented. Successful `sync`
+also rebuilds typed measurements and refreshes analytics offline. `doctor`
+checks presence rather than authenticating credentials; missing
+configuration/storage fails readiness. `--initialize` is the explicit offline
+migration/bootstrap operation.
 
 | Command | Purpose |
 | --- | --- |
 | `stridelog doctor` | Check the key, token, database, migrations and free disk space; warn about key expiry |
-| `stridelog sync [--since DATE] [--dry-run]` | Incremental sync, or download history from a given date |
+| `stridelog sync [--since DATE] [--dry-run]` | Incremental sync followed by offline rebuild and analysis |
 | `stridelog status` | Last sync, number of activities, data-quality summary |
 | `stridelog import-fit PATH` | Import FIT files from a folder (fallback) |
 | `stridelog rebuild` | Rebuild imported and calculated tables from the raw archive |
 | `stridelog analyze` | Recalculate derived metrics |
+| `stridelog profile set DATE` | Save dated athlete analytics inputs locally |
 | `stridelog dq-report` | List data-quality flags |
 | `stridelog serve` | Start the local API, and the web app from Phase 6 |
 | `stridelog backup` | Make a consistent copy of the database |
@@ -652,7 +654,8 @@ Approving this plan approves exactly these dependencies. Anything else needs a s
 
 - **Runtime**: `garmin-connect-personal-api-python`, `garmin-fit-sdk`, `sqlalchemy`, `alembic`, `pydantic`, `pydantic-settings`, `polars`, `typer`, `fastapi`, `uvicorn`.
 - **Development group**: `ruff`, `pyright`, `pytest`, `pytest-cov`, `hypothesis`.
-- **Notebooks group**: `ipykernel`, `plotly`.
+- **Notebooks group**: `ipykernel`, `plotly`, `nbformat` (approved to support
+  Plotly's VS Code notebook renderer).
 - **Tools that are not project dependencies**: `pre-commit` (installed with `uv tool install`); gitleaks and nbstripout run through pre-commit.
 - **Frontend, confirmed by an ADR at the start of Phase 6**: `react`, `react-dom`, `typescript`, `vite`, `@tanstack/react-query`, a router, Mantine, ECharts, `maplibre-gl`, `openapi-typescript`, `openapi-fetch`, `vitest`, `@testing-library/react`, ESLint with Prettier (or Biome), and Playwright.
 
@@ -1044,29 +1047,67 @@ individual warning causes remain unverified; they do not mean imports failed.
 
 **Goal**: reliable, documented, tested running metrics, stored in derived tables and checked visually.
 
+**Approved implementation plan (2026-11-18)**: deliver cohesive changes in this
+order: (1) analytics storage, dated profile inputs and prepared streams; (2)
+per-run splits, laps, zones and best efforts; (3) training-load, aerobic and
+wellness series; (4) race results and predictions; and (5) `analyze`/post-sync
+integration, metric documentation, synthetic validation notebooks and acceptance
+tests. Use `uv` for project operations, synthetic data for automated validation,
+and green CI before merging. Optional Phase 2 `import-fit` remains a separate
+open Should task.
+
+**Approved algorithm and privacy choices**:
+
+- Interpolate only between known record values no more than 5 seconds apart,
+  except that splits and best efforts use distance interpolation up to 10 seconds
+  by owner approval. Preserve longer gaps and missing values as null, and never
+  extrapolate.
+- Use a centered 20 m elevation smoothing window.
+- Do not infer historical zone effective dates from Garmin snapshot observation
+  times. Apply only explicitly dated profile zones on or after their effective
+  date; otherwise zone-time metrics are unavailable.
+- Leave TRIMP and dependent load series unavailable until dated maximum/resting
+  HR and the selected TRIMP constants are present.
+- Calculate aerobic decoupling only for runs explicitly marked steady by the
+  owner; automatic Garmin profile sourcing is deferred until a supported source
+  is verified.
+- Phase 3 quality flags remain warnings, not diagnoses or blanket exclusion
+  rules. Any metric-specific limit must be deterministic and documented.
+- When a sampled marathon best effort is unavailable, the owner approved a
+  separately labelled estimate from continuous valid lap totals. It is not an
+  official record and does not enter PR progression or race predictions. The
+  owner approved validating timer totals against FIT elapsed totals rather
+  than timestamp durations when those disagree; accuracy remains uncertain.
+- The owner-run FIT discovery notebook remains untouched; assistant work does
+  not read its outputs or access raw account data, credentials or private reports.
+
 Tasks:
 
-- [ ] 4.1 Prepare the data streams: resample to one sample per second, detect moving time, smooth elevation and calculate grade.
-- [ ] 4.2 Splits, lap analysis and time in heart-rate zones.
-- [ ] 4.3 Best efforts, personal records and their progression.
-- [ ] 4.4 Training load: TRIMP per run; daily CTL, ATL and TSB; the acute:chronic workload ratio; weekly ramp rate.
-- [ ] 4.5 Aerobic metrics: efficiency factor, aerobic decoupling on long steady runs, and pace at heart rate.
-- [ ] 4.6 (Should) Grade-adjusted pace.
-- [ ] 4.7 Races: a list from Garmin's race flag plus your overrides, with results. (Should) Riegel, VDOT and critical-speed predictions compared with actual results.
-- [ ] 4.8 Wellness trends: resting heart rate (7-day average), sleep, Body Battery and stress, plus HRV when present.
-- [ ] 4.9 Athlete profile: maximum, resting and threshold heart rate, zones and sex (for the TRIMP constants). Values come from Garmin where available, can be overridden, and are dated so changes over time are respected.
-- [ ] 4.10 `stridelog analyze`, which also runs after each sync. It calculates per-run metrics only for new or changed runs, and recalculates the daily series completely, which is quick at this data size.
-- [ ] 4.11 Notebooks, with outputs stripped: data quality, activity explorer, best efforts, fitness and fatigue, races, recovery.
-- [ ] 4.12 `docs/metrics.md`: the definition, formula, assumptions, limitations (such as GPS elevation) and references for every metric.
-- [ ] 4.13 Tests: known-answer tests, Hypothesis property tests, and saved-output tests on synthetic data streams.
+- [x] 4.1 Prepare the data streams: resample to one sample per second, detect moving time, smooth elevation and calculate grade.
+- [x] 4.2 Splits, lap analysis and time in heart-rate zones.
+- [x] 4.3 Best efforts, personal records and their progression.
+- [x] 4.4 Training load: TRIMP per run; daily CTL, ATL and TSB; the acute:chronic workload ratio; weekly ramp rate.
+- [x] 4.5 Efficiency factor, explicitly annotated steady-run decoupling, and pace at heart rate.
+- [x] 4.6 (Should) Grade-adjusted pace.
+- [x] 4.7 Race overrides and results, with Riegel, VDOT and critical-speed predictions.
+- [x] 4.8 Wellness trends: resting heart rate (7-day average), sleep, Body Battery and stress, plus HRV when present.
+- [x] 4.9 Dated athlete profiles and CLI overrides. Automatic Garmin profile sourcing is deferred by owner decision.
+- [x] 4.10 `stridelog analyze`, which also runs after each sync. It calculates per-run metrics only for new or changed runs, and recalculates the daily series completely.
+- [x] 4.11 Output-free notebooks for data quality, activity exploration, best efforts, fitness/fatigue, races and recovery. Static validation passed; owner-run visual checks remain part of acceptance.
+- [x] 4.12 `docs/metrics.md`: metric definitions, formulas, assumptions, limitations and references.
+- [x] 4.13 Known-answer and Hypothesis tests plus synthetic SQLite analysis-output tests.
 
 **Deliverable**: derived tables and validation notebooks. Tag v0.2.0.
 
 **Acceptance criteria**:
 
-- Every metric has documentation and tests.
-- Splits are within 1 second of Garmin Connect on 5 runs, and best efforts agree with Garmin's records where the two can be compared.
-- The fitness and fatigue curves look plausible against your training history, which we review together.
+The owner reported the real-data checks below passed locally; no private
+measurements or reports were inspected. Lap-based marathon estimates remain
+estimates and were not treated as official records.
+
+- [x] Every metric has documentation and synthetic tests.
+- [x] Splits are within 1 second of Garmin Connect on 5 runs, and sampled best efforts agree with Garmin's records where comparable.
+- [x] The fitness and fatigue curves look plausible against the owner's training history.
 
 ### Phase 5: Local API (size M, release v0.3.0)
 

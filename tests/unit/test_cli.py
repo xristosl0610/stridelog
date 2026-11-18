@@ -25,6 +25,6 @@ def test_no_arguments_shows_help_without_claiming_features_exist(force_color: st
     assert "--version" in plain_help
 
 
-def test_unimplemented_command_is_rejected() -> None:
-    result = runner.invoke(app, ["analyze"])
+def test_unknown_command_is_rejected() -> None:
+    result = runner.invoke(app, ["not-a-stridelog-command"])
     assert result.exit_code == 2
