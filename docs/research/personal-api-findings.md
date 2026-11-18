@@ -9,8 +9,9 @@ Milestone: [Phase 1 - Discovery spike](https://github.com/xristosl0610/stridelog
 This document separates independently checked public facts from owner-reported
 private checks. The assistant has not read any key, token cache, raw account
 response or real FIT file.
-ADR-0002 is accepted specifically for raw ingestion. ADR-0004 remains Proposed
-until Phase 3 parser validation. The [approved closeout](#approved-discovery-closeout)
+ADR-0002 is accepted specifically for raw ingestion. ADR-0004 was accepted for
+offline parsing after Phase 3 synthetic validation and owner-reported rebuild
+and spot checks. The [approved closeout](#approved-discovery-closeout)
 supersedes historical discovery gates below; unchecked observations remain
 explicitly unverified, not retroactively passed.
 

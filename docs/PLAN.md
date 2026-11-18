@@ -997,7 +997,8 @@ conservative HR-source provenance and synthetic encoding tests; (2) JSON mapping
 idempotent offline rebuild preserving annotations, private data-quality reporting,
 documentation and acceptance tests. The owner approved `garmin-fit-sdk==21.221.0`
 as a runtime dependency. No analytics or web dependencies are included. ADR-0004
-stays Proposed until parser validation, including the remaining owner spot checks.
+is accepted for this parser after synthetic validation and owner-reported
+acceptance; known interpretation limitations remain documented.
 Final acceptance is owner-run: repeated rebuild equality, every run imported or
 reported, ten spot checks and recorded runtime (target under five minutes).
 No additional discovery-helper batch is required.
@@ -1030,14 +1031,14 @@ Tasks:
 
 **Acceptance criteria**:
 
-Implementation and synthetic checks are complete; the following real-archive
-checks remain owner-run and unverified. ADR-0004 stays Proposed and v0.1.0 is
-not tagged until final parser/spot-check acceptance.
+The owner reported all checks below passed locally. No private inputs or quality
+report were inspected by the assistant. Quality flags are heuristics, and
+individual warning causes remain unverified; they do not mean imports failed.
 
-- Rebuilding from the raw archive twice gives identical query results.
-- Every run is imported, or listed in the report with a reason.
-- Totals match Garmin Connect for 10 spot-checked runs.
-- The full rebuild time is recorded; the target is under 5 minutes.
+- [x] Rebuilding from the raw archive twice gives identical query results.
+- [x] Every run is imported, or listed in the report with a reason.
+- [x] Totals match Garmin Connect for 10 spot-checked runs.
+- [x] The full rebuild time is recorded and below the 5-minute target.
 
 ### Phase 4: Analytics (size L, release v0.2.0)
 

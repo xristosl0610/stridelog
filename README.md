@@ -6,7 +6,7 @@ rebuildable local archive, transparent running metrics and an interactive web ap
 **Status:** Phase 2 core raw ingestion implemented: `.env` settings, migrations,
 `doctor`, `status` and resumable `sync`; the owner confirmed full and repeat sync
 completion. Phase 3 typed storage, offline `rebuild` and `dq-report` are implemented;
-real-archive parser acceptance remains owner-run. Analytics, `import-fit` and the
+owner-reported real-archive acceptance is complete. Analytics, `import-fit` and the
 web app are not available yet. See the [plan](docs/PLAN.md).
 
 ## Development quickstart
@@ -135,11 +135,11 @@ The observed HRV response is null; it stays null. Populated HRV schemas and othe
 unsupported JSON shapes are reported, not guessed. Sleep score remains null
 because no verified field was observed. Current zones are not applied retroactively.
 
-Phase 3 acceptance still needs two completed local rebuilds, ten private spot
-checks (distance, timer/elapsed duration, cadence, laps, local date/offset and HR
-evidence), and recorded runtime. The target is under five minutes; no account
-benchmark is claimed. Release v0.1.0 and final FIT ADR acceptance wait for those
-checks. Share only sanitized success/failure, not reports or measurements.
+Phase 3 acceptance was reported by the owner after repeated local rebuilds, a
+runtime below the five-minute target and ten Garmin Connect comparisons. The
+assistant did not inspect the private archive or reports. Individual quality
+warnings still merit local review where relevant; they are not automatic import
+failures. Never share reports or measurements.
 
 ## Privacy
 
