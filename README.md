@@ -3,10 +3,9 @@
 Local-first running analytics for Garmin data. Planned features include a
 rebuildable local archive, transparent running metrics and an interactive web app.
 
-**Status:** Phase 3 typed storage and v0.1.0 are complete. Phase 4 analytics are
-under implementation; the Phase 4 work adds local metric calculation, dated
-athlete profiles and automatic analysis after sync. Optional `import-fit` remains
-open, and the API/web app are not available yet. See the [plan](docs/PLAN.md).
+**Status:** Phase 4 analytics are complete, adding local metric calculation,
+dated athlete profiles and automatic analysis after sync. Optional `import-fit`
+remains open, and the API/web app are not available yet. See the [plan](docs/PLAN.md).
 
 ## Development quickstart
 

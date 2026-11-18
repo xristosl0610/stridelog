@@ -4,7 +4,7 @@ Local-first running analytics for your Garmin data. stridelog mirrors your runs 
 
 | Item | Value |
 | --- | --- |
-| Status | Phase 3 complete and v0.1.0 released. Phase 4 approved and in progress. |
+| Status | Phase 4 analytics implementation and acceptance checks complete. |
 | Owner | Christos Lathourakis |
 | Last updated | 2026-11-18 |
 | Repository | `stridelog` on your personal GitHub account (public, MIT), created in Phase 0 |
@@ -1093,7 +1093,7 @@ Tasks:
 - [x] 4.8 Wellness trends: resting heart rate (7-day average), sleep, Body Battery and stress, plus HRV when present.
 - [x] 4.9 Dated athlete profiles and CLI overrides. Automatic Garmin profile sourcing is deferred by owner decision.
 - [x] 4.10 `stridelog analyze`, which also runs after each sync. It calculates per-run metrics only for new or changed runs, and recalculates the daily series completely.
-- [x] 4.11 Output-free notebooks for data quality, activity exploration, best efforts, fitness/fatigue, races and recovery. Static validation passed; owner-run visual checks remain part of acceptance.
+- [x] 4.11 Output-free notebooks for data quality, activity exploration, best efforts, fitness/fatigue, races and recovery. Static validation and owner-run visual acceptance checks passed.
 - [x] 4.12 `docs/metrics.md`: metric definitions, formulas, assumptions, limitations and references.
 - [x] 4.13 Known-answer and Hypothesis tests plus synthetic SQLite analysis-output tests.
 
