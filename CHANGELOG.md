@@ -5,6 +5,8 @@ Versioning.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-20
+
 ### Added
 
 - Phase 5 local FastAPI endpoints, synthetic coverage, offline Swagger UI,
