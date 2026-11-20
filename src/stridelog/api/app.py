@@ -33,8 +33,11 @@ ALLOWED_ORIGINS = (
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 )
-SWAGGER_ASSETS = frozenset({"favicon-32x32.png", "swagger-ui-bundle.js", "swagger-ui.css"})
 SWAGGER_ASSET_DIRECTORY = Path(str(files("swagger_ui").joinpath("static")))
+SWAGGER_ASSET_PATHS = {
+    asset_name: SWAGGER_ASSET_DIRECTORY / asset_name
+    for asset_name in ("favicon-32x32.png", "swagger-ui-bundle.js", "swagger-ui.css")
+}
 
 
 def _is_allowed_host(value: str) -> bool:
@@ -110,9 +113,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/swagger-ui/{asset_name}", include_in_schema=False)
     def swagger_asset(asset_name: str) -> FileResponse:
-        if asset_name not in SWAGGER_ASSETS:
+        asset_path = SWAGGER_ASSET_PATHS.get(asset_name)
+        if asset_path is None:
             raise HTTPException(status_code=404, detail="Swagger asset not found.")
-        return FileResponse(SWAGGER_ASSET_DIRECTORY / asset_name)
+        return FileResponse(asset_path)
 
     app.add_middleware(GZipMiddleware, minimum_size=500)
     app.add_middleware(
