@@ -4,9 +4,9 @@ Local-first running analytics for your Garmin data. stridelog mirrors your runs 
 
 | Item | Value |
 | --- | --- |
-| Status | Phase 4 analytics implementation and acceptance checks complete. |
+| Status | Phase 5 local API implementation and acceptance checks complete. |
 | Owner | Christos Lathourakis |
-| Last updated | 2026-11-18 |
+| Last updated | 2026-11-20 |
 | Repository | `stridelog` on your personal GitHub account (public, MIT), created in Phase 0 |
 
 **How to use this plan.** This plan will change as the project goes on. Each phase becomes a GitHub milestone and each task becomes an issue. Before a phase starts, we write a short implementation plan for it and you approve it, as `.github/copilot-instructions.md` requires. Important decisions are recorded as ADRs (architecture decision records, Section 9.5). When a decision changes, the ADR and this plan are updated in the same pull request.
