@@ -3,9 +3,8 @@
 Local-first running analytics for Garmin data. Planned features include a
 rebuildable local archive, transparent running metrics and an interactive web app.
 
-**Status:** Phase 4 analytics are complete, adding local metric calculation,
-dated athlete profiles and automatic analysis after sync. Optional `import-fit`
-remains open, and the API/web app are not available yet. See the [plan](docs/PLAN.md).
+**Status:** Phase 5 local API is complete, including owner-reported real-data
+latency acceptance. Optional `import-fit` remains open. See the [plan](docs/PLAN.md).
 
 ## Development quickstart
 
@@ -157,6 +156,20 @@ notebooks` and the project's `.venv` kernel. They read only the local SQLite
 database. Their loader does not parse `.env` or load credentials; set
 `STRIDELOG_DATA_DIR` in the notebook kernel environment if you use a non-default
 data directory. Treat generated outputs as private and never commit or share them.
+
+## Local API
+
+After initializing local storage, run `uv run stridelog serve`. The API listens
+only on `127.0.0.1:8000` and opens its Swagger UI at
+`http://127.0.0.1:8000/docs`. All application endpoints are under `/api/v1`.
+Browser requests are limited to the API's own local origin and the development
+frontend origins on port 5173. Write requests must use JSON. The API does not
+sync automatically; use its explicit sync endpoint or the CLI.
+
+OpenAPI changes must be exported with `uv run python scripts/export_openapi.py`;
+CI checks the checked-in `openapi.json` for drift. The API exposes private
+activity, health and route data only to the local machine. Never share its
+responses or enable non-loopback hosting.
 
 Phase 3 acceptance was reported by the owner after repeated local rebuilds, a
 runtime below the five-minute target and ten Garmin Connect comparisons. The

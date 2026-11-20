@@ -1,10 +1,12 @@
 """Thin command-line boundary; configuration and storage values stay private."""
 
+import webbrowser
 from datetime import date
 from importlib.metadata import version
 from typing import Annotated, Literal
 
 import typer
+import uvicorn
 from alembic.util.exc import CommandError as MigrationError
 from pydantic import ValidationError
 from pydantic_settings import SettingsError
@@ -12,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from stridelog.activity_annotations import set_race_details, set_steady_run
 from stridelog.analysis import analyze as run_analysis
+from stridelog.api.app import create_app
 from stridelog.athlete import save_profile
 from stridelog.config import Settings
 from stridelog.db.engine import database_status
@@ -354,3 +357,22 @@ def dq_report() -> None:
     else:
         typer.echo(f"Quality findings: {count}")
         typer.echo("Private report saved under the data directory's reports folder.")
+
+
+@app.command()
+def serve() -> None:
+    """Start the loopback-only API and open its Swagger documentation."""
+    try:
+        settings = _settings()
+        snapshot = database_status(settings.data_dir)
+        if snapshot is None:
+            raise StridelogError("Database is not initialized; run doctor --initialize.")
+        webbrowser.open("http://127.0.0.1:8000/docs")
+        uvicorn.run(
+            create_app(settings),
+            host="127.0.0.1",
+            port=8000,
+            access_log=False,
+        )
+    except (StridelogError, SQLAlchemyError, MigrationError, OSError) as error:
+        _failure(error)
