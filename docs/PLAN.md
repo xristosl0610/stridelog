@@ -1115,27 +1115,28 @@ estimates and were not treated as official records.
 
 Tasks:
 
-- [ ] 5.1 FastAPI application: one router per area, Pydantic response models, and a database session provided to each request (FastAPI dependency injection). All endpoints live under `/api/v1`.
-- [ ] 5.2 Read endpoints:
+- [x] 5.1 FastAPI application: one router per area, Pydantic response models, and a database session provided to each request (FastAPI dependency injection). All endpoints live under `/api/v1`.
+- [x] 5.2 Read endpoints:
   - activities (paged and filtered) and activity details;
   - data streams (downsampled, with full resolution on request) and routes as GeoJSON;
   - volume and trends, best efforts, races, training load, wellness and predictions.
-- [ ] 5.3 Write endpoints:
+- [x] 5.3 Write endpoints:
   - your activity notes: race details, free-text notes, exclusion flags;
   - "sync now", reporting progress by polling or server-sent events, and using the same lock as the command line.
-- [ ] 5.4 Local security:
+- [x] 5.4 Local security:
   - listen on 127.0.0.1 only and check the Host header;
   - accept browser requests only from the development address (strict CORS);
   - accept changes only as JSON;
   - never include secrets in responses.
-- [ ] 5.5 Performance:
+- [x] 5.5 Performance controls:
   - read from precalculated tables;
   - compress responses with GZip;
-  - let the browser reuse cached responses until the next sync (ETag headers);
-  - target: 95 percent of responses under 200 ms on your real data.
-- [ ] 5.6 Export the OpenAPI contract to `openapi.json` in the repository; CI fails if it no longer matches the code.
-- [ ] 5.7 `stridelog serve`: starts the API (and the web app from Phase 6) and opens the browser.
-- [ ] 5.8 Tests:
+  - let the browser reuse cached responses until the next sync (ETag headers).
+  - [x] Target: 95 percent of responses under 200 ms on your real data.
+    Owner-reported local validation passed; timings were not inspected.
+- [x] 5.6 Export the OpenAPI contract to `openapi.json` in the repository; CI fails if it no longer matches the code.
+- [x] 5.7 `stridelog serve`: starts the local API, serves Swagger UI, and opens the browser. Phase 6 adds the web app.
+- [x] 5.8 Tests:
   - every endpoint, using TestClient and a database filled with synthetic data;
   - a snapshot of the API schema;
   - security: an unknown Host header and requests from other websites are rejected.
@@ -1144,9 +1145,10 @@ Tasks:
 
 **Acceptance criteria**:
 
-- Every endpoint is documented and tested.
-- The response-time target is met on your real data.
-- Requests with an unknown Host header are rejected.
+- [x] Every endpoint is documented and tested.
+- [x] The response-time target is met on your real data. Owner-reported local
+  validation passed; timing values were not inspected.
+- [x] Requests with an unknown Host header are rejected.
 
 ### Gate G1: Frontend readiness
 

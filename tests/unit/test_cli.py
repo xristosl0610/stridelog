@@ -28,3 +28,9 @@ def test_no_arguments_shows_help_without_claiming_features_exist(force_color: st
 def test_unknown_command_is_rejected() -> None:
     result = runner.invoke(app, ["not-a-stridelog-command"])
     assert result.exit_code == 2
+
+
+def test_serve_command_help() -> None:
+    result = runner.invoke(app, ["serve", "--help"])
+    assert result.exit_code == 0
+    assert "Swagger documentation" in result.stdout

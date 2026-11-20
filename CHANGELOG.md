@@ -5,6 +5,11 @@ Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Phase 5 local FastAPI endpoints, synthetic coverage, offline Swagger UI,
+  OpenAPI contract export and the `stridelog serve` command.
+
 ## [0.2.0] - 2026-11-18
 
 ### Added
